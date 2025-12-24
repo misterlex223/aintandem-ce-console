@@ -1,5 +1,6 @@
 export * from './workflow';
-export { 
+export * from './auth';
+export {
   listWorkflows,
   getWorkflow,
   createWorkflow,
