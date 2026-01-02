@@ -178,18 +178,18 @@ export function sortProjects(
     let comparison = 0;
 
     switch (sortBy) {
-      case 'name':
-        comparison = a.name.localeCompare(b.name);
-        break;
-      case 'createdAt':
-        comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-        break;
-      case 'workflowPhase': {
-        const phaseA = a.workflowState?.currentPhaseId || '';
-        const phaseB = b.workflowState?.currentPhaseId || '';
-        comparison = phaseA.localeCompare(phaseB);
-        break;
-      }
+    case 'name':
+      comparison = a.name.localeCompare(b.name);
+      break;
+    case 'createdAt':
+      comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      break;
+    case 'workflowPhase': {
+      const phaseA = a.workflowState?.currentPhaseId || '';
+      const phaseB = b.workflowState?.currentPhaseId || '';
+      comparison = phaseA.localeCompare(phaseB);
+      break;
+    }
     }
 
     return sortOrder === 'asc' ? comparison : -comparison;

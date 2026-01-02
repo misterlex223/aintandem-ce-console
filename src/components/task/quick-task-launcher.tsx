@@ -4,7 +4,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Play, Sparkles, Info, FileText, X } from 'lucide-react';
-import { executeAdhocTask } from '@/lib/api/tasks';
+import { getClient } from '@/lib/api/api-helpers';
 import { toast } from 'sonner';
 import { Memory } from '@/types/context';
 import { ContextSearchDialog } from '../context/context-search-dialog';
@@ -30,8 +30,10 @@ export function QuickTaskLauncher({ projectId, onTaskStarted, onAdvancedClick }:
 
     try {
       setIsExecuting(true);
+      const client = getClient();
 
-      await executeAdhocTask(projectId, {
+      await client.tasks.executeAdhocTask({
+        projectId,
         title: `Quick task: ${prompt.substring(0, 50)}${prompt.length > 50 ? '...' : ''}`,
         prompt: prompt.trim(),
         contextMemoryIds: selectedContextMemories.map(m => m.id),

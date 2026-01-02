@@ -34,16 +34,16 @@ export function getMemoryScopeId(memory: Memory): string {
   const { scope, hierarchy } = memory.metadata;
 
   switch (scope) {
-    case 'organization':
-      return hierarchy.org_id;
-    case 'workspace':
-      return hierarchy.workspace_id;
-    case 'project':
-      return hierarchy.project_id;
-    case 'task':
-      return hierarchy.task_id || hierarchy.project_id;
-    default:
-      return hierarchy.project_id;
+  case 'organization':
+    return hierarchy.org_id;
+  case 'workspace':
+    return hierarchy.workspace_id;
+  case 'project':
+    return hierarchy.project_id;
+  case 'task':
+    return hierarchy.task_id || hierarchy.project_id;
+  default:
+    return hierarchy.project_id;
   }
 }
 

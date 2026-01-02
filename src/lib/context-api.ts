@@ -2,6 +2,7 @@
  * Context API Client
  * HTTP client for context/memory management endpoints
  * Updated for new context-manager integration
+ * Partially migrated to SDK where supported
  */
 
 import type {
@@ -25,116 +26,153 @@ import type {
   TrackedFile,
 } from '../types/context';
 import { buildApiUrl } from './config';
-import { authenticatedFetch } from '@/lib/utils/authenticated-fetch';
+import { authenticatedFetch } from './api/api-helpers';
+import { getClient } from './api/api-helpers';
+
+// ============================================================================
+// SDK-Supported Functions (migrated to use SDK)
+// ============================================================================
 
 /**
  * Create a new memory
+ * @deprecated Use client.context.createMemory() from SDK instead
  */
 export async function createMemory(input: CreateMemoryInput): Promise<Memory> {
-  const response = await authenticatedFetch(buildApiUrl('/api/context/memories'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Failed to create memory' }));
-    throw new Error(error.error || 'Failed to create memory');
-  }
-
-  return response.json();
+  const client = getClient();
+  // Map console types to SDK types
+  const sdkRequest: any = {
+    projectId: input.scope_id,
+    content: input.content,
+    metadata: {
+      scope: input.scope,
+      memory_type: input.memory_type,
+      visibility: input.visibility,
+      tags: input.tags,
+      source: input.source,
+      ...input.custom,
+    },
+  };
+  return client.context.createMemory(sdkRequest) as Promise<Memory>;
 }
 
 /**
  * Get memory by ID
+ * @deprecated Use client.context.getMemory() from SDK instead
  */
 export async function getMemory(id: string): Promise<Memory> {
-  const response = await authenticatedFetch(buildApiUrl(`/api/context/memories/${id}`));
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Failed to get memory' }));
-    throw new Error(error.error || 'Failed to get memory');
-  }
-
-  return response.json();
+  const client = getClient();
+  return client.context.getMemory(id) as Promise<Memory>;
 }
 
 /**
  * Update memory
+ * Note: SDK uses PATCH, console previously used PUT
+ * @deprecated Use client.context.updateMemory() from SDK instead
  */
 export async function updateMemory(id: string, updates: UpdateMemoryInput): Promise<Memory> {
-  const response = await authenticatedFetch(buildApiUrl(`/api/context/memories/${id}`), {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(updates),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Failed to update memory' }));
-    throw new Error(error.error || 'Failed to update memory');
-  }
-
-  return response.json();
+  const client = getClient();
+  return client.context.updateMemory(id, updates) as Promise<Memory>;
 }
 
 /**
  * Delete memory
+ * @deprecated Use client.context.deleteMemory() from SDK instead
  */
 export async function deleteMemory(id: string): Promise<void> {
-  const response = await authenticatedFetch(buildApiUrl(`/api/context/memories/${id}`), {
-    method: 'DELETE',
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Failed to delete memory' }));
-    throw new Error(error.error || 'Failed to delete memory');
-  }
+  const client = getClient();
+  return client.context.deleteMemory(id);
 }
 
 /**
  * Search memories with semantic search
+ * Note: SDK uses GET with query params, console used POST with body
+ * @deprecated Use client.context.searchMemories() from SDK instead
  */
 export async function searchMemories(options: MemorySearchOptions): Promise<SearchMemoriesResponse> {
-  const response = await authenticatedFetch(buildApiUrl('/api/context/search'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(options),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Search failed' }));
-    throw new Error(error.error || 'Search failed');
-  }
-
-  return response.json();
+  const client = getClient();
+  const result = await client.context.searchMemories({
+    query: options.query,
+    scope: options.scope,
+    scope_id: options.scope_id,
+    limit: options.limit,
+    include_inherited: options.include_inherited,
+  }) as any;
+  // Map SDK response to console response (SDK uses 'total', console uses 'count')
+  return {
+    results: result.memories || [],
+    count: result.total || 0,
+  };
 }
 
 /**
- * List memories with filters
+ * List memories for a project
+ * Note: SDK only supports project scope, not all filters from console
+ * @deprecated Use client.context.listMemories() from SDK instead
  */
 export async function listMemories(filters?: MemoryListFilters): Promise<GetMemoriesResponse> {
-  const params = new URLSearchParams();
-
-  if (filters?.scope) params.append('scope', filters.scope);
-  if (filters?.scope_id) params.append('scope_id', filters.scope_id);
-  if (filters?.memory_type) params.append('memory_type', filters.memory_type);
-  if (filters?.tags) params.append('tags', filters.tags.join(','));
-  if (filters?.limit) params.append('limit', filters.limit.toString());
-  if (filters?.offset) params.append('offset', filters.offset.toString());
-
-  const url = buildApiUrl(`/api/context/memories?${params.toString()}`);
-  const response = await authenticatedFetch(url);
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Failed to list memories' }));
-    throw new Error(error.error || 'Failed to list memories');
-  }
-
-  return response.json();
+  const client = getClient();
+  // SDK requires projectId, so we need to get it from filters
+  const projectId = filters?.scope_id || '';
+  const result = await client.context.listMemories(projectId, {
+    limit: filters?.limit,
+    offset: filters?.offset,
+  }) as any;
+  // Map SDK response to console response (SDK returns array, console uses object with 'count')
+  return {
+    memories: result || [],
+    count: result?.length || 0,
+  };
 }
+
+/**
+ * Batch create memories
+ * @deprecated Use client.context.createMemoriesBatch() from SDK instead
+ */
+export async function batchCreateMemories(memories: CreateMemoryInput[]): Promise<any> {
+  const client = getClient();
+  return client.context.createMemoriesBatch(
+    memories.map(m => ({
+      projectId: m.scope_id,
+      content: m.content,
+      metadata: {
+        scope: m.scope,
+        memory_type: m.memory_type,
+        visibility: m.visibility,
+        tags: m.tags,
+        source: m.source,
+        ...m.custom,
+      },
+    }))
+  );
+}
+
+/**
+ * Get memory statistics for a project
+ * Note: SDK only supports project scope
+ * @deprecated Use client.context.getMemoryStats() from SDK instead
+ */
+export async function getMemoryStats(scope?: { type: MemoryScope; id: string }): Promise<MemoryStats> {
+  const client = getClient();
+  // SDK requires projectId
+  const projectId = scope?.id || '';
+  const result = await client.context.getMemoryStats(projectId) as any;
+  // Map SDK response to console response (different field names)
+  return {
+    scope: scope?.type,
+    scope_id: projectId,
+    total: result.totalMemories || 0,
+    by_type: {}, // SDK doesn't provide this breakdown
+    context_enabled: true, // SDK doesn't provide this info
+  };
+}
+
+// ============================================================================
+// NOT Supported by SDK - Keep using authenticatedFetch directly
+// ============================================================================
 
 /**
  * Get memories for a specific scope with optional hierarchical inheritance
+ * NOT AVAILABLE IN SDK
  */
 export async function getMemoriesForScope(
   scope: MemoryScope,
@@ -166,6 +204,7 @@ export async function getMemoriesForScope(
 
 /**
  * Get similar memories
+ * NOT AVAILABLE IN SDK
  */
 export async function getSimilarMemories(
   memoryId: string,
@@ -182,25 +221,8 @@ export async function getSimilarMemories(
 }
 
 /**
- * Batch create memories
- */
-export async function batchCreateMemories(memories: CreateMemoryInput[]): Promise<any> {
-  const response = await authenticatedFetch(buildApiUrl('/api/context/memories/batch'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ memories }),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Batch create failed' }));
-    throw new Error(error.error || 'Batch create failed');
-  }
-
-  return response.json();
-}
-
-/**
  * Batch update memories
+ * NOT AVAILABLE IN SDK
  */
 export async function batchUpdateMemories(
   updates: Array<{ id: string; content: string }>
@@ -220,25 +242,8 @@ export async function batchUpdateMemories(
 }
 
 /**
- * Get memory statistics
- */
-export async function getMemoryStats(scope?: { type: MemoryScope; id: string }): Promise<MemoryStats> {
-  const url = scope
-    ? buildApiUrl(`/api/context/stats/${scope.type}/${scope.id}`)
-    : buildApiUrl('/api/context/stats');
-
-  const response = await authenticatedFetch(url);
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Failed to get stats' }));
-    throw new Error(error.error || 'Failed to get stats');
-  }
-
-  return response.json();
-}
-
-/**
  * Check context system health
+ * NOT AVAILABLE IN SDK
  */
 export async function getContextHealth(): Promise<ContextHealthResponse> {
   const response = await authenticatedFetch(buildApiUrl('/api/context/health'));
@@ -253,6 +258,7 @@ export async function getContextHealth(): Promise<ContextHealthResponse> {
 
 /**
  * Get context system information
+ * NOT AVAILABLE IN SDK
  */
 export async function getContextInfo(): Promise<{
   enabled: boolean;
@@ -273,6 +279,7 @@ export async function getContextInfo(): Promise<{
 
 /**
  * Get hierarchical context (with full hierarchy information)
+ * NOT AVAILABLE IN SDK
  */
 export async function getHierarchicalContext(
   scope: MemoryScope,
@@ -291,6 +298,7 @@ export async function getHierarchicalContext(
 
 /**
  * Import a single document file
+ * NOT AVAILABLE IN SDK
  */
 export async function importDocument(request: ImportDocumentRequest): Promise<ImportResult> {
   const response = await authenticatedFetch(buildApiUrl('/api/context/import/document'), {
@@ -309,6 +317,7 @@ export async function importDocument(request: ImportDocumentRequest): Promise<Im
 
 /**
  * Import all documents from a folder
+ * NOT AVAILABLE IN SDK
  */
 export async function importFolder(request: ImportFolderRequest): Promise<ImportResult> {
   const response = await authenticatedFetch(buildApiUrl('/api/context/import/folder'), {
@@ -327,6 +336,7 @@ export async function importFolder(request: ImportFolderRequest): Promise<Import
 
 /**
  * Sync a single file (re-import if changed)
+ * NOT AVAILABLE IN SDK
  */
 export async function syncFile(request: SyncFileRequest): Promise<SyncResult> {
   const response = await authenticatedFetch(buildApiUrl('/api/context/sync/file'), {
@@ -345,6 +355,7 @@ export async function syncFile(request: SyncFileRequest): Promise<SyncResult> {
 
 /**
  * Sync all files in a folder
+ * NOT AVAILABLE IN SDK
  */
 export async function syncFolder(request: SyncFolderRequest): Promise<SyncResult> {
   const response = await authenticatedFetch(buildApiUrl('/api/context/sync/folder'), {
@@ -363,6 +374,7 @@ export async function syncFolder(request: SyncFolderRequest): Promise<SyncResult
 
 /**
  * Get file sync statistics
+ * NOT AVAILABLE IN SDK
  */
 export async function getSyncStats(scope?: { type: MemoryScope; id: string }): Promise<SyncStats> {
   const params = new URLSearchParams();
@@ -384,6 +396,7 @@ export async function getSyncStats(scope?: { type: MemoryScope; id: string }): P
 
 /**
  * List all tracked files
+ * NOT AVAILABLE IN SDK
  */
 export async function getTrackedFiles(scope?: { type: MemoryScope; id: string }): Promise<TrackedFile[]> {
   const params = new URLSearchParams();
@@ -406,6 +419,7 @@ export async function getTrackedFiles(scope?: { type: MemoryScope; id: string })
 
 /**
  * Capture task dialog to context
+ * NOT AVAILABLE IN SDK
  */
 export async function captureTaskDialog(
   taskId: string,

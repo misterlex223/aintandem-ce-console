@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { executeWorkflowStep } from '@/lib/api/tasks';
+import { executeWorkflowStep } from '@/lib/api/api-helpers';
 
 interface TaskExecutionDialogProps {
   open: boolean;
@@ -35,9 +35,7 @@ export function TaskExecutionDialog({
       setError(null);
       
       // Execute the workflow step as a task
-      await executeWorkflowStep(projectId, stepId, {
-        additionalInput: additionalInput.trim(),
-      });
+      await executeWorkflowStep(projectId, stepId, additionalInput.trim());
       
       if (onTaskStarted) {
         onTaskStarted();

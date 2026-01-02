@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { RefreshCw, Play, CheckCircle, XCircle, Clock, MinusCircle } from 'lucide-react';
-import { getProjectTasks } from '@/lib/api/tasks';
+import { getClient } from '@/lib/api/api-helpers';
 
 interface TaskHistoryPanelProps {
   projectId: string;
@@ -20,8 +20,9 @@ export function TaskHistoryPanel({ projectId }: TaskHistoryPanelProps) {
     try {
       setLoading(true);
       setError(null);
-      const result = await getProjectTasks(projectId);
-      setTasks(result.tasks);
+      const client = getClient();
+      const tasksData = await client.tasks.listTaskHistory(projectId) as any[];
+      setTasks(tasksData);
     } catch (err) {
       console.error('Failed to fetch tasks:', err);
       setError(err instanceof Error ? err.message : 'Failed to load tasks');

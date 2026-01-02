@@ -1,10 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
-import type { 
-  Sandbox, 
-  Organization, 
-  Workspace, 
-  Project 
+import { getClient } from '@/lib/api/api-helpers';
+import type {
+  Sandbox,
+  Organization,
+  Workspace,
+  Project
 } from '@/lib/types';
 
 // Query keys for sandbox data
@@ -47,7 +47,10 @@ const PROJECT_KEYS = {
 export const useSandboxesQuery = () => {
   return useQuery<Sandbox[]>({
     queryKey: SANDBOX_KEYS.list(),
-    queryFn: () => api.getSandboxes(),
+    queryFn: async () => {
+      const client = getClient();
+      return client.sandboxes.listSandboxes() as any;
+    },
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
 };
@@ -56,12 +59,8 @@ export const useSandboxQuery = (id: string) => {
   return useQuery<Sandbox>({
     queryKey: SANDBOX_KEYS.detail(id),
     queryFn: async () => {
-      const sandboxes = await api.getSandboxes();
-      const sandbox = sandboxes.find(s => s.id === id);
-      if (!sandbox) {
-        throw new Error('Sandbox not found');
-      }
-      return sandbox;
+      const client = getClient();
+      return client.sandboxes.getSandbox(id) as any;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -71,7 +70,10 @@ export const useSandboxQuery = (id: string) => {
 export const useOrganizationsQuery = () => {
   return useQuery<Organization[]>({
     queryKey: ORGANIZATION_KEYS.list(),
-    queryFn: () => api.getOrganizations(),
+    queryFn: async () => {
+      const client = getClient();
+      return client.workspaces.listOrganizations() as any;
+    },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 };
@@ -79,41 +81,58 @@ export const useOrganizationsQuery = () => {
 export const useOrganizationQuery = (id: string) => {
   return useQuery<Organization>({
     queryKey: ORGANIZATION_KEYS.detail(id),
-    queryFn: () => api.getOrganization(id),
+    queryFn: async () => {
+      const client = getClient();
+      return client.workspaces.getOrganization(id) as any;
+    },
     staleTime: 10 * 60 * 1000, // 10 minutes
   });
 };
 
 // Workspace Queries
-export const useWorkspacesQuery = () => {
+export const useWorkspacesQuery = (organizationId: string) => {
   return useQuery<Workspace[]>({
     queryKey: WORKSPACE_KEYS.list(),
-    queryFn: () => api.getWorkspaces(),
+    queryFn: async () => {
+      const client = getClient();
+      return client.workspaces.listWorkspaces(organizationId) as any;
+    },
     staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: !!organizationId,
   });
 };
 
 export const useWorkspaceQuery = (id: string) => {
   return useQuery<Workspace>({
     queryKey: WORKSPACE_KEYS.detail(id),
-    queryFn: () => api.getWorkspace(id),
+    queryFn: async () => {
+      const client = getClient();
+      return client.workspaces.getWorkspace(id) as any;
+    },
     staleTime: 10 * 60 * 1000, // 10 minutes
   });
 };
 
 // Project Queries
-export const useProjectsQuery = () => {
+export const useProjectsQuery = (workspaceId: string) => {
   return useQuery<Project[]>({
     queryKey: PROJECT_KEYS.list(),
-    queryFn: () => api.getProjects(),
+    queryFn: async () => {
+      const client = getClient();
+      return client.workspaces.listProjects(workspaceId) as any;
+    },
     staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: !!workspaceId,
   });
 };
 
 export const useProjectQuery = (id: string) => {
   return useQuery<Project>({
     queryKey: PROJECT_KEYS.detail(id),
-    queryFn: () => api.getProject(id),
+    queryFn: async () => {
+      const client = getClient();
+      return client.workspaces.getProject(id) as any;
+    },
     staleTime: 10 * 60 * 1000, // 10 minutes
   });
 };
@@ -128,13 +147,27 @@ export const useAllSandboxDataQuery = () => {
   }>({
     queryKey: ['all-sandbox-data'],
     queryFn: async () => {
-      const [sandboxes, organizations, workspaces, projects] = await Promise.all([
-        api.getSandboxes(),
-        api.getOrganizations(),
-        api.getWorkspaces(),
-        api.getProjects(),
+      const client = getClient();
+      const [sandboxes, organizations] = await Promise.all([
+        client.sandboxes.listSandboxes() as any,
+        client.workspaces.listOrganizations() as any,
       ]);
-      
+
+      // Fetch all workspaces for each organization
+      const workspaces: Workspace[] = [];
+      const projects: Project[] = [];
+
+      for (const org of organizations) {
+        const orgWorkspaces = await client.workspaces.listWorkspaces(org.id) as any;
+        workspaces.push(...orgWorkspaces);
+
+        // Fetch all projects for each workspace
+        for (const ws of orgWorkspaces) {
+          const wsProjects = await client.workspaces.listProjects(ws.id) as any;
+          projects.push(...wsProjects);
+        }
+      }
+
       return { sandboxes, organizations, workspaces, projects };
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
@@ -145,7 +178,10 @@ export const useAllSandboxDataQuery = () => {
 export const useStartSandboxMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api.startSandbox(id),
+    mutationFn: async (id: string) => {
+      const client = getClient();
+      await client.sandboxes.startSandbox(id);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: SANDBOX_KEYS.list() });
       queryClient.invalidateQueries({ queryKey: ['all-sandbox-data'] });
@@ -156,7 +192,10 @@ export const useStartSandboxMutation = () => {
 export const useStopSandboxMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api.stopSandbox(id),
+    mutationFn: async (id: string) => {
+      const client = getClient();
+      await client.sandboxes.stopSandbox(id);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: SANDBOX_KEYS.list() });
       queryClient.invalidateQueries({ queryKey: ['all-sandbox-data'] });
@@ -167,7 +206,10 @@ export const useStopSandboxMutation = () => {
 export const useDeleteSandboxMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api.deleteSandbox(id),
+    mutationFn: async (id: string) => {
+      const client = getClient();
+      await client.sandboxes.deleteSandbox(id);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: SANDBOX_KEYS.list() });
       queryClient.invalidateQueries({ queryKey: ['all-sandbox-data'] });
@@ -178,8 +220,14 @@ export const useDeleteSandboxMutation = () => {
 export const useCreateSandboxMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ name, folderMapping, projectId }: { name?: string; folderMapping?: string; projectId?: string }) => 
-      api.createSandbox(name || '', folderMapping, projectId),
+    mutationFn: async ({ name, folderMapping, projectId }: { name?: string; folderMapping?: string; projectId?: string }) => {
+      const client = getClient();
+      return client.sandboxes.createSandbox({
+        name: name || '',
+        folderMapping,
+        projectId
+      } as any) as any;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: SANDBOX_KEYS.list() });
       queryClient.invalidateQueries({ queryKey: ['all-sandbox-data'] });

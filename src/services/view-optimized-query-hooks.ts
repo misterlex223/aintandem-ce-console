@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { getClient } from '@/lib/api/api-helpers';
 import { searchEntities } from '@/lib/search-utils';
 import type { Organization, Workspace, Project, Workflow } from '@/lib/types';
 
@@ -52,14 +52,23 @@ export const useProjectCentricListQuery = (filters?: any) => {
   return useQuery({
     queryKey: VIEW_OPTIMIZED_KEYS.projectCentric.list(filters),
     queryFn: async () => {
-      // Fetch all required data in parallel
-      const [projects, workspaces, organizations, workflows] = await Promise.all([
-        api.getProjects(),
-        api.getWorkspaces(),
-        api.getOrganizations(),
-        api.listWorkflows()
-      ]);
-      
+      // Fetch all required data by hierarchy
+      const organizations = await getClient().workspaces.listOrganizations() as any;
+      const workspaces: Workspace[] = [];
+      const projects: Project[] = [];
+
+      for (const org of organizations) {
+        const orgWorkspaces = await getClient().workspaces.listWorkspaces(org.id) as any;
+        workspaces.push(...orgWorkspaces);
+
+        for (const ws of orgWorkspaces) {
+          const wsProjects = await getClient().workspaces.listProjects(ws.id) as any;
+          projects.push(...wsProjects);
+        }
+      }
+
+      const workflows = await (await getClient()).workflows.listWorkflows() as any;
+
       // Apply filters if provided
       if (filters) {
         const filtered = searchEntities(organizations, workspaces, projects, workflows, filters);
@@ -70,7 +79,7 @@ export const useProjectCentricListQuery = (filters?: any) => {
           workflows: filtered.workflows
         };
       }
-      
+
       return { projects, workspaces, organizations, workflows };
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
@@ -86,23 +95,31 @@ export const useOrganizationCentricTreeQuery = (organizationId?: string) => {
       if (organizationId) {
         // Fetch specific organization tree
         const [organization, workspaces, projects] = await Promise.all([
-          api.getOrganization(organizationId),
-          api.getWorkspaces(organizationId),
+          getClient().workspaces.getOrganization(organizationId),
+          getClient().workspaces.listWorkspaces(organizationId),
           Promise.all(
-            (await api.getWorkspaces(organizationId)).map(ws => 
-              api.getProjects(ws.id)
+            (await getClient().workspaces.listWorkspaces(organizationId) as any).map((ws: Workspace) =>
+              getClient().workspaces.listProjects(ws.id)
             )
           ).then(results => results.flat())
         ]);
         
         return { organization, workspaces, projects };
       } else {
-        // Fetch complete tree
-        const [organizations, workspaces, projects] = await Promise.all([
-          api.getOrganizations(),
-          api.getWorkspaces(),
-          api.getProjects()
-        ]);
+        // Fetch complete tree - need to fetch by hierarchy
+        const organizations = await getClient().workspaces.listOrganizations() as any;
+        const workspaces: Workspace[] = [];
+        const projects: Project[] = [];
+
+        for (const org of organizations) {
+          const orgWorkspaces = await getClient().workspaces.listWorkspaces(org.id) as any;
+          workspaces.push(...orgWorkspaces);
+
+          for (const ws of orgWorkspaces) {
+            const wsProjects = await getClient().workspaces.listProjects(ws.id) as any;
+            projects.push(...wsProjects);
+          }
+        }
         
         return { organizations, workspaces, projects };
       }
@@ -116,12 +133,21 @@ export const useOrganizationCentricFlatQuery = (filters?: any) => {
   return useQuery({
     queryKey: VIEW_OPTIMIZED_KEYS.organizationCentric.flat(filters),
     queryFn: async () => {
-      const [organizations, workspaces, projects] = await Promise.all([
-        api.getOrganizations(),
-        api.getWorkspaces(),
-        api.getProjects()
-      ]);
-      
+      // Fetch all data by hierarchy
+      const organizations = await getClient().workspaces.listOrganizations() as any;
+      const workspaces: Workspace[] = [];
+      const projects: Project[] = [];
+
+      for (const org of organizations) {
+        const orgWorkspaces = await getClient().workspaces.listWorkspaces(org.id) as any;
+        workspaces.push(...orgWorkspaces);
+
+        for (const ws of orgWorkspaces) {
+          const wsProjects = await getClient().workspaces.listProjects(ws.id) as any;
+          projects.push(...wsProjects);
+        }
+      }
+
       // Apply filters if provided
       if (filters) {
         const filtered = searchEntities(organizations, workspaces, projects, [], filters);
@@ -131,7 +157,7 @@ export const useOrganizationCentricFlatQuery = (filters?: any) => {
           projects: filtered.projects
         };
       }
-      
+
       return { organizations, workspaces, projects };
     },
     staleTime: 3 * 60 * 1000, // 3 minutes
@@ -144,31 +170,41 @@ export const useWorkflowCentricListQuery = (filters?: any) => {
   return useQuery({
     queryKey: VIEW_OPTIMIZED_KEYS.workflowCentric.list(filters),
     queryFn: async () => {
-      const [workflows, projects] = await Promise.all([
-        api.listWorkflows(),
-        api.getProjects()
-      ]);
-      
+      // Fetch all projects by hierarchy
+      const organizations = await getClient().workspaces.listOrganizations() as any;
+      const projects: Project[] = [];
+
+      for (const org of organizations) {
+        const orgWorkspaces = await getClient().workspaces.listWorkspaces(org.id) as any;
+
+        for (const ws of orgWorkspaces) {
+          const wsProjects = await getClient().workspaces.listProjects(ws.id) as any;
+          projects.push(...wsProjects);
+        }
+      }
+
+      const workflows = await (await getClient()).workflows.listWorkflows() as any;
+
       // Apply filters if provided
       if (filters) {
         // Filter workflows based on criteria
         let filteredWorkflows = [...workflows];
-        
+
         if (filters.status && filters.status !== 'all') {
-          filteredWorkflows = filteredWorkflows.filter(w => w.status === filters.status);
+          filteredWorkflows = filteredWorkflows.filter((w: Workflow) => w.status === filters.status);
         }
-        
+
         if (filters.searchQuery) {
           const query = filters.searchQuery.toLowerCase();
-          filteredWorkflows = filteredWorkflows.filter(w => 
+          filteredWorkflows = filteredWorkflows.filter((w: Workflow) =>
             w.name.toLowerCase().includes(query) ||
             w.description?.toLowerCase().includes(query)
           );
         }
-        
+
         return { workflows: filteredWorkflows, projects };
       }
-      
+
       return { workflows, projects };
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -180,28 +216,38 @@ export const useWorkflowCentricLifecycleQuery = (filters?: any) => {
   return useQuery({
     queryKey: VIEW_OPTIMIZED_KEYS.workflowCentric.lifecycle(filters),
     queryFn: async () => {
-      const [workflows, projects] = await Promise.all([
-        api.listWorkflows(),
-        api.getProjects()
-      ]);
+      // Fetch all projects by hierarchy
+      const organizations = await getClient().workspaces.listOrganizations() as any;
+      const projects: Project[] = [];
+
+      for (const org of organizations) {
+        const orgWorkspaces = await getClient().workspaces.listWorkspaces(org.id) as any;
+
+        for (const ws of orgWorkspaces) {
+          const wsProjects = await getClient().workspaces.listProjects(ws.id) as any;
+          projects.push(...wsProjects);
+        }
+      }
+
+      const workflows = await (await getClient()).workflows.listWorkflows() as any;
       
       // Group workflows by status for lifecycle view
       const groupedWorkflows = {
-        published: workflows.filter(w => w.status === 'published'),
-        draft: workflows.filter(w => w.status === 'draft'),
-        archived: workflows.filter(w => w.status === 'archived')
+        published: workflows.filter((w: Workflow) => w.status === 'published'),
+        draft: workflows.filter((w: Workflow) => w.status === 'draft'),
+        archived: workflows.filter((w: Workflow) => w.status === 'archived')
       };
-      
+
       // Calculate usage statistics
       const workflowStats: Record<string, { usageCount: number; lastUsed?: string }> = {};
-      workflows.forEach(workflow => {
-        const workflowProjects = projects.filter(p => p.workflowId === workflow.id);
+      workflows.forEach((workflow: Workflow) => {
+        const workflowProjects = projects.filter((p: Project) => p.workflowId === workflow.id);
         const usageCount = workflowProjects.length;
-        
-        const lastUsed = workflowProjects.length > 0 
-          ? workflowProjects.reduce((latest, project) => {
-            return new Date(project.createdAt) > new Date(latest) 
-              ? project.createdAt 
+
+        const lastUsed = workflowProjects.length > 0
+          ? workflowProjects.reduce((latest: string, project: Project) => {
+            return new Date(project.createdAt) > new Date(latest)
+              ? project.createdAt
               : latest;
           }, workflowProjects[0].createdAt)
           : undefined;
@@ -226,12 +272,23 @@ export const useEnhancedSearchQuery = (searchTerm: string, entityType?: string) 
       }
       
       // Fetch all entities in parallel
-      const [organizations, workspaces, projects, workflows] = await Promise.all([
-        api.getOrganizations(),
-        api.getWorkspaces(),
-        api.getProjects(),
-        api.listWorkflows()
-      ]);
+      const organizations = await getClient().workspaces.listOrganizations() as any;
+
+      // Fetch all workspaces and projects by hierarchy
+      const workspaces: Workspace[] = [];
+      const projects: Project[] = [];
+
+      for (const org of organizations) {
+        const orgWorkspaces = await getClient().workspaces.listWorkspaces(org.id) as any;
+        workspaces.push(...orgWorkspaces);
+
+        for (const ws of orgWorkspaces) {
+          const wsProjects = await getClient().workspaces.listProjects(ws.id) as any;
+          projects.push(...wsProjects);
+        }
+      }
+
+      const workflows = await (await getClient()).workflows.listWorkflows() as any;
       
       // Perform search across all entities
       const results = searchEntities(
@@ -254,24 +311,36 @@ export const useProjectCentricStatsQuery = () => {
   return useQuery({
     queryKey: VIEW_OPTIMIZED_KEYS.stats.projectCentric(),
     queryFn: async () => {
-      const [projects, workspaces, organizations, workflows, sandboxes] = await Promise.all([
-        api.getProjects(),
-        api.getWorkspaces(),
-        api.getOrganizations(),
-        api.listWorkflows(),
-        api.getSandboxes()
+      // Fetch all data by hierarchy
+      const organizations = await getClient().workspaces.listOrganizations() as any;
+      const workspaces: Workspace[] = [];
+      const projects: Project[] = [];
+
+      for (const org of organizations) {
+        const orgWorkspaces = await getClient().workspaces.listWorkspaces(org.id) as any;
+        workspaces.push(...orgWorkspaces);
+
+        for (const ws of orgWorkspaces) {
+          const wsProjects = await getClient().workspaces.listProjects(ws.id) as any;
+          projects.push(...wsProjects);
+        }
+      }
+
+      const [workflows, sandboxes] = await Promise.all([
+        (await getClient()).workflows.listWorkflows() as any,
+        (await getClient()).sandboxes.listSandboxes() as any
       ]);
-      
+
       // Calculate comprehensive statistics
       const totalProjects = projects.length;
-      const activeProjects = projects.filter(p => p.sandboxId).length;
-      const boundProjects = projects.filter(p => p.workflowId).length;
+      const activeProjects = projects.filter((p: Project) => p.sandboxId).length;
+      const boundProjects = projects.filter((p: Project) => p.workflowId).length;
       const unboundProjects = totalProjects - boundProjects;
-      
+
       const workflowDistribution: Record<string, number> = {};
-      projects.forEach(project => {
+      projects.forEach((project: Project) => {
         if (project.workflowId) {
-          workflowDistribution[project.workflowId] = 
+          workflowDistribution[project.workflowId] =
             (workflowDistribution[project.workflowId] || 0) + 1;
         }
       });
@@ -299,18 +368,27 @@ export const useOrganizationCentricStatsQuery = () => {
   return useQuery({
     queryKey: VIEW_OPTIMIZED_KEYS.stats.organizationCentric(),
     queryFn: async () => {
-      const [organizations, workspaces, projects] = await Promise.all([
-        api.getOrganizations(),
-        api.getWorkspaces(),
-        api.getProjects()
-      ]);
-      
+      // Fetch all data by hierarchy
+      const organizations = await getClient().workspaces.listOrganizations() as any;
+      const workspaces: Workspace[] = [];
+      const projects: Project[] = [];
+
+      for (const org of organizations) {
+        const orgWorkspaces = await getClient().workspaces.listWorkspaces(org.id) as any;
+        workspaces.push(...orgWorkspaces);
+
+        for (const ws of orgWorkspaces) {
+          const wsProjects = await getClient().workspaces.listProjects(ws.id) as any;
+          projects.push(...wsProjects);
+        }
+      }
+
       // Calculate organization-centric statistics
       const orgProjectCounts: Record<string, number> = {};
-      organizations.forEach(org => {
-        const orgWorkspaces = workspaces.filter(ws => ws.organizationId === org.id);
-        const workspaceIds = orgWorkspaces.map(ws => ws.id);
-        const orgProjects = projects.filter(p => workspaceIds.includes(p.workspaceId)).length;
+      organizations.forEach((org: Organization) => {
+        const orgWorkspaces = workspaces.filter((ws: Workspace) => ws.organizationId === org.id);
+        const workspaceIds = orgWorkspaces.map((ws: Workspace) => ws.id);
+        const orgProjects = projects.filter((p: Project) => workspaceIds.includes(p.workspaceId)).length;
         orgProjectCounts[org.id] = orgProjects;
       });
       
@@ -323,7 +401,7 @@ export const useOrganizationCentricStatsQuery = () => {
       ''
       );
       
-      const largestOrg = organizations.find(org => org.id === largestOrgId);
+      const largestOrg = organizations.find((org: Organization) => org.id === largestOrgId);
       
       return {
         totalOrganizations: organizations.length,
@@ -346,35 +424,45 @@ export const useWorkflowCentricStatsQuery = () => {
   return useQuery({
     queryKey: VIEW_OPTIMIZED_KEYS.stats.workflowCentric(),
     queryFn: async () => {
-      const [workflows, projects] = await Promise.all([
-        api.listWorkflows(),
-        api.getProjects()
-      ]);
-      
+      // Fetch all data by hierarchy
+      const organizations = await getClient().workspaces.listOrganizations() as any;
+      const projects: Project[] = [];
+
+      for (const org of organizations) {
+        const orgWorkspaces = await getClient().workspaces.listWorkspaces(org.id) as any;
+
+        for (const ws of orgWorkspaces) {
+          const wsProjects = await getClient().workspaces.listProjects(ws.id) as any;
+          projects.push(...wsProjects);
+        }
+      }
+
+      const workflows = await (await getClient()).workflows.listWorkflows() as any;
+
       // Calculate workflow-centric statistics
       const workflowUsage: Record<string, { count: number; name: string }> = {};
-      workflows.forEach(workflow => {
-        const projectCount = projects.filter(p => p.workflowId === workflow.id).length;
+      workflows.forEach((workflow: Workflow) => {
+        const projectCount = projects.filter((p: Project) => p.workflowId === workflow.id).length;
         workflowUsage[workflow.id] = {
           count: projectCount,
           name: workflow.name
         };
       });
-      
+
       const totalProjects = projects.length;
-      const boundProjects = projects.filter(p => p.workflowId).length;
+      const boundProjects = projects.filter((p: Project) => p.workflowId).length;
       const workflowAdoptionRate = totalProjects > 0 ? (boundProjects / totalProjects) * 100 : 0;
-      
+
       // Find most popular workflow
-      const mostPopularWorkflowId = Object.keys(workflowUsage).reduce((maxId, id) => 
-        workflowUsage[id].count > (workflowUsage[maxId]?.count || 0) ? id : maxId, 
+      const mostPopularWorkflowId = Object.keys(workflowUsage).reduce((maxId, id) =>
+        workflowUsage[id].count > (workflowUsage[maxId]?.count || 0) ? id : maxId,
       ''
       );
-      
-      const mostPopularWorkflow = mostPopularWorkflowId 
-        ? workflowUsage[mostPopularWorkflowId] 
+
+      const mostPopularWorkflow = mostPopularWorkflowId
+        ? workflowUsage[mostPopularWorkflowId]
         : null;
-      
+
       return {
         totalWorkflows: workflows.length,
         totalProjects,
@@ -384,9 +472,9 @@ export const useWorkflowCentricStatsQuery = () => {
         mostPopularWorkflow,
         workflowUsage,
         workflowStatusDistribution: {
-          published: workflows.filter(w => w.status === 'published').length,
-          draft: workflows.filter(w => w.status === 'draft').length,
-          archived: workflows.filter(w => w.status === 'archived').length
+          published: workflows.filter((w: Workflow) => w.status === 'published').length,
+          draft: workflows.filter((w: Workflow) => w.status === 'draft').length,
+          archived: workflows.filter((w: Workflow) => w.status === 'archived').length
         }
       };
     },

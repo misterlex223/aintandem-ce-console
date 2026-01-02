@@ -3,10 +3,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { getSettings, updateSettings, SettingsData } from '@/lib/api/settings';
+import { useAInTandem } from '@aintandem/sdk-react';
 import { DOCKER_CONFIG } from '@/config/constants';
 
+interface SettingsData {
+  gitDisplayName?: string;
+  gitEmail?: string;
+  dockerImage?: string;
+}
+
 export function SettingsPage() {
+  const { client } = useAInTandem();
   const [settings, setSettings] = useState<SettingsData>({
     gitDisplayName: '',
     gitEmail: '',
@@ -23,7 +30,8 @@ export function SettingsPage() {
   const loadSettings = async () => {
     try {
       setIsLoading(true);
-      const fetchedSettings = await getSettings();
+      // TODO: Fix SDK type incompatibility, remove any type assertion
+      const fetchedSettings = await client.settings.getSettings() as SettingsData;
       setSettings({
         gitDisplayName: fetchedSettings.gitDisplayName || '',
         gitEmail: fetchedSettings.gitEmail || '',
@@ -51,7 +59,8 @@ export function SettingsPage() {
 
   const handleSave = async () => {
     try {
-      await updateSettings(settings);
+      // TODO: Fix SDK type incompatibility, remove any type assertion
+      await client.settings.updateSettings(settings as unknown as any);
       setSaveStatus({ type: 'success', message: 'Settings saved successfully!' });
       setTimeout(() => setSaveStatus(null), 3000);
     } catch (error) {

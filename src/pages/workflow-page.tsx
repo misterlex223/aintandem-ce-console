@@ -13,7 +13,7 @@ import {
   getPhaseDisplayName,
   calculateOverallProgress
 } from '@/lib/api/workflow';
-import { api } from '@/lib/api';
+import { getClient } from '@/lib/api/api-helpers';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 
@@ -36,8 +36,9 @@ export function WorkflowPage() {
       setError(null);
 
       try {
-        // Fetch project using api client
-        const projectData = await api.getProject(projectId);
+        // Fetch project using SDK
+        const client = getClient();
+        const projectData = await client.workspaces.getProject(projectId) as any;
         setProject(projectData);
 
         // Fetch workflow state
@@ -46,7 +47,7 @@ export function WorkflowPage() {
 
         // Fetch the assigned workflow definition if project has a workflow
         if (projectData.workflowId) {
-          const workflow = await api.getWorkflow(projectData.workflowId);
+          const workflow = await client.workflows.getWorkflow(projectData.workflowId) as any;
           setWorkflowDefinition(workflow);
         }
       } catch (err) {

@@ -25,7 +25,7 @@ import {
   Database,
 } from 'lucide-react';
 import type { TaskExecution } from '@/lib/types';
-import { rerunTask } from '@/lib/api/tasks';
+import { rerunTask } from '@/lib/api/api-helpers';
 import { toast } from 'sonner';
 import { TaskContextPanel } from './task-context-panel';
 
@@ -50,30 +50,30 @@ export function TaskDetailViewer({
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'completed':
-        return <CheckCircle className="h-5 w-5 text-green-500" />;
-      case 'failed':
-        return <XCircle className="h-5 w-5 text-red-500" />;
-      case 'running':
-        return <Play className="h-5 w-5 text-blue-500" />;
-      case 'queued':
-        return <Clock className="h-5 w-5 text-yellow-500" />;
-      default:
-        return <MinusCircle className="h-5 w-5 text-gray-500" />;
+    case 'completed':
+      return <CheckCircle className="h-5 w-5 text-green-500" />;
+    case 'failed':
+      return <XCircle className="h-5 w-5 text-red-500" />;
+    case 'running':
+      return <Play className="h-5 w-5 text-blue-500" />;
+    case 'queued':
+      return <Clock className="h-5 w-5 text-yellow-500" />;
+    default:
+      return <MinusCircle className="h-5 w-5 text-gray-500" />;
     }
   };
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
-      case 'completed':
-        return 'default';
-      case 'failed':
-        return 'destructive';
-      case 'running':
-      case 'queued':
-        return 'secondary';
-      default:
-        return 'outline';
+    case 'completed':
+      return 'default';
+    case 'failed':
+      return 'destructive';
+    case 'running':
+    case 'queued':
+      return 'secondary';
+    default:
+      return 'outline';
     }
   };
 
@@ -99,7 +99,7 @@ export function TaskDetailViewer({
   const handleRerun = async () => {
     try {
       setIsRerunning(true);
-      await rerunTask(projectId, task.id);
+      await rerunTask(task.id);
       toast.success('Task re-run initiated');
       if (onTaskRerun) {
         onTaskRerun();

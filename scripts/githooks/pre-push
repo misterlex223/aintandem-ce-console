@@ -1,0 +1,51 @@
+#!/bin/bash
+set -e
+
+echo "🔍 Running pre-push checks..."
+
+# Check for uncommitted changes
+if ! git diff --quiet || ! git diff --cached --quiet; then
+  echo ""
+  echo "❌ Pre-push check failed: You have uncommitted changes."
+  echo ""
+  echo "Please commit or stash your changes before pushing:"
+  echo "  git commit -m 'your message'   # commit changes"
+  echo "  git stash                      # stash changes temporarily"
+  echo ""
+  git status --short
+  exit 1
+fi
+
+# Check for untracked files (optional warning)
+UNTRACKED=$(git ls-files --others --exclude-standard | wc -l | tr -d ' ')
+if [ "$UNTRACKED" -gt 0 ]; then
+  echo ""
+  echo "⚠️  Warning: You have $UNTRACKED untracked file(s)."
+  echo "   Consider committing or adding them to .gitignore"
+  echo ""
+  git ls-files --others --exclude-standard
+fi
+
+# Run ESLint
+echo "🔨 Running ESLint..."
+pnpm lint
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "❌ Pre-push check failed: Linting errors detected."
+  echo "   Run 'pnpm lint:fix' to auto-fix issues."
+  exit 1
+fi
+
+# Run build check
+echo "📦 Running build check..."
+pnpm build
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "❌ Pre-push check failed: Build errors detected."
+  exit 1
+fi
+
+echo "✅ Pre-push checks passed!"
+exit 0

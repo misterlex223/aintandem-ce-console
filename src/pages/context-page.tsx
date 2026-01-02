@@ -13,7 +13,7 @@ import { Brain, TrendingUp, Upload, Building2, Briefcase, FolderOpen } from 'luc
 import { ContextBrowser } from '../components/context/context-browser';
 import { FileImportDialog } from '../components/context/file-import-dialog';
 import { useContextStore } from '../stores/context-store';
-import { api } from '../lib/api';
+import { getClient } from '../lib/api/api-helpers';
 import type { Organization, Workspace, Project } from '../lib/types';
 import type { MemoryScope } from '../types/context';
 
@@ -35,14 +35,14 @@ export default function ContextPage() {
   // Compute effective scope for API calls
   const getScopeId = () => {
     switch (scopeType) {
-      case 'organization':
-        return selectedOrgId;
-      case 'workspace':
-        return selectedWorkspaceId;
-      case 'project':
-        return selectedProjectId;
-      default:
-        return '';
+    case 'organization':
+      return selectedOrgId;
+    case 'workspace':
+      return selectedWorkspaceId;
+    case 'project':
+      return selectedProjectId;
+    default:
+      return '';
     }
   };
 
@@ -60,7 +60,8 @@ export default function ContextPage() {
   const loadOrganizations = async () => {
     setIsLoadingHierarchy(true);
     try {
-      const orgs = await api.getOrganizations();
+      const client = getClient();
+      const orgs = await client.workspaces.listOrganizations() as any;
       setOrganizations(orgs);
       if (orgs.length > 0) {
         setSelectedOrgId(orgs[0].id);
@@ -81,7 +82,8 @@ export default function ContextPage() {
 
   const loadWorkspaces = async (orgId: string) => {
     try {
-      const ws = await api.getWorkspaces(orgId);
+      const client = getClient();
+      const ws = await client.workspaces.listWorkspaces(orgId) as any;
       setWorkspaces(ws);
       if (ws.length > 0) {
         setSelectedWorkspaceId(ws[0].id);
@@ -100,7 +102,8 @@ export default function ContextPage() {
 
   const loadProjects = async (workspaceId: string) => {
     try {
-      const projs = await api.getProjects(workspaceId);
+      const client = getClient();
+      const projs = await client.workspaces.listProjects(workspaceId) as any;
       setProjects(projs);
       if (projs.length > 0 && scopeType === 'project') {
         setSelectedProjectId(projs[0].id);

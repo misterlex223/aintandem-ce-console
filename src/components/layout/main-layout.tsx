@@ -7,10 +7,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { User, Settings, LogOut } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAInTandem } from '@aintandem/sdk-react';
 
 export function MainLayout() {
-  const { logout } = useAuth();
+  const { logout } = useAInTandem();
 
   const handleSignOut = () => {
     logout();

@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAuth } from '@/contexts/AuthContext';
-import { login as authLogin } from '@/lib/api/auth';
+import { useAInTandem } from '@aintandem/sdk-react';
+import { getApiBaseUrl } from '@/lib/config';
 
 export function LoginPage() {
   const [username, setUsername] = useState('');
@@ -13,17 +13,37 @@ export function LoginPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isDesktopApp, setIsDesktopApp] = useState<boolean | null>(null);
-  const { login } = useAuth();
+  const [isLocalhost, setIsLocalhost] = useState(false);
+
+  // Use SDK's auth hook
+  const { login: sdkLogin, isAuthenticated, isLoading: isAuthLoading } = useAInTandem();
+
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Check if running in AInTandem Desktop app
+  // Get redirect path or default to home
+  const from = location.state?.from?.pathname || '/';
+
+  // Check if running in AInTandem Desktop app and if API is localhost
   useEffect(() => {
-    setIsDesktopApp(!!window.__IN_AINTANDEM_DESKTOP__);
+    const inDesktopApp = !!window.__IN_AINTANDEM_DESKTOP__;
+    setIsDesktopApp(inDesktopApp);
+
+    const apiBaseUrl = getApiBaseUrl();
+    // Check if API URL is localhost (empty means proxy mode, which is also localhost in dev)
+    const isLocal = !apiBaseUrl ||
+                    apiBaseUrl.includes('localhost') ||
+                    apiBaseUrl.includes('127.0.0.1') ||
+                    apiBaseUrl.includes('[::1]');
+    setIsLocalhost(isLocal);
   }, []);
 
-  // Get the redirect path from state or default to home
-  const from = location.state?.from?.pathname || '/';
+  // If already authenticated, redirect to target page
+  useEffect(() => {
+    if (isAuthenticated && !isAuthLoading) {
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, isAuthLoading, navigate, from]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,34 +51,29 @@ export function LoginPage() {
     setIsLoading(true);
 
     if (!username.trim() || !password.trim()) {
-      setError('Please enter both username and password');
+      setError('Please enter username and password');
       setIsLoading(false);
       return;
     }
 
     try {
-      // Call the authentication API
-      const result = await authLogin({ username, password });
+      // Use SDK's login method
+      await sdkLogin({ username, password });
 
-      if (result.success && result.token) {
-        // Store the token in the auth context
-        login(result.token, result.user); // Pass the token and user info to the auth context
-
-        // Redirect to the intended page or home
-        navigate(from, { replace: true });
-      } else {
-        setError(result.error || 'Invalid credentials. Please try again.');
-      }
+      // SDK handles token storage internally and updates auth state via AInTandemProvider
+      // Redirect to the originally requested page or home
+      navigate(from, { replace: true });
     } catch (err) {
       console.error('Login error:', err);
-      setError('Login failed due to server error. Please try again later.');
+      setError(err instanceof Error ? err.message : 'Login failed. Please check your credentials.');
     } finally {
       setIsLoading(false);
     }
   };
 
   // Show different UI based on environment
-  if (isDesktopApp === false) {
+  // Show "Desktop App Required" if: NOT in desktop app AND API is localhost
+  if (isDesktopApp === false && isLocalhost) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-muted p-4">
         <Card className="w-full max-w-md">
@@ -105,7 +120,7 @@ export function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-muted p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Welcome to Kai</CardTitle>
+          <CardTitle className="text-2xl">Welcome to AInTandem</CardTitle>
           <CardDescription>Enter your credentials to access the platform</CardDescription>
         </CardHeader>
         <CardContent>

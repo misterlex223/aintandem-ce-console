@@ -13,7 +13,7 @@ import { SandboxConfigDialog } from '@/components/ai-base/sandbox-config-dialog'
 import { MoreVertical, ExternalLink, RotateCcw, Move3D, Workflow, Loader2, Settings } from 'lucide-react';
 import type { Project } from '@/lib/types';
 import { getPhaseDisplayName } from '@/lib/api/workflow';
-import { api } from '@/lib/api';
+import { getClient } from '@/lib/api/api-helpers';
 
 interface ProjectCardProps {
   project: Project;
@@ -135,8 +135,9 @@ export function ProjectCard({
 
   const handleSaveAiConfig = async (aiConfig: any) => {
     try {
+      const client = getClient();
       // Update the project with the new sandbox configuration
-      await api.updateProject(project.id, { aiConfig });
+      await client.workspaces.updateProject(project.id, { aiConfig }) as any;
     } catch (error) {
       console.error('Failed to save sandbox configuration:', error);
     }

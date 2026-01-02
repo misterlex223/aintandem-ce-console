@@ -6,8 +6,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { api } from '@/lib/api';
-import { getStatusDisplayName } from '@/lib/api/workflows';
+import { getClient } from '@/lib/api/api-helpers';
+import { getWorkflowStatusDisplayName } from '@/lib/api/api-helpers';
 import type { Workflow, WorkflowDefinition } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,7 +62,8 @@ export function WorkflowEditorPage() {
     async function fetchWorkflow() {
       try {
         setIsLoading(true);
-        const data = await api.getWorkflow(id!);
+        const client = getClient();
+        const data = await client.workflows.getWorkflow(id!) as any;
         setWorkflow(data);
         setName(data.name);
         setDescription(data.description);
@@ -106,23 +107,24 @@ export function WorkflowEditorPage() {
 
     try {
       setIsSaving(true);
+      const client = getClient();
 
       if (isNew) {
         // Create new workflow
-        const newWorkflow = await api.createWorkflow(
+        const newWorkflow = await client.workflows.createWorkflow({
           name,
           description,
           definition
-        );
+        }) as any;
         alert('Workflow created successfully!');
         navigate(`/workflow/${newWorkflow.id}/edit`);
       } else {
         // Update existing workflow
-        const updated = await api.updateWorkflow(id!, {
+        const updated = await client.workflows.updateWorkflow(id!, {
           name,
           description,
           definition,
-        });
+        }) as any;
         setWorkflow(updated);
         setDefinition(updated.definition);
         alert('Workflow updated successfully!');
@@ -139,11 +141,12 @@ export function WorkflowEditorPage() {
   const handleStatusChange = async (newStatus: 'published' | 'draft' | 'archived') => {
     if (!workflow) return;
 
-    const confirmMsg = `Change workflow status to "${getStatusDisplayName(newStatus)}"?`;
+    const confirmMsg = `Change workflow status to "${getWorkflowStatusDisplayName(newStatus)}"?`;
     if (!confirm(confirmMsg)) return;
 
     try {
-      const updated = await api.changeWorkflowStatus(workflow.id, newStatus);
+      const client = getClient();
+      const updated = await client.workflows.changeWorkflowStatus(workflow.id, newStatus) as any;
       setWorkflow(updated);
       alert('Status updated successfully!');
     } catch (err) {
@@ -216,7 +219,7 @@ export function WorkflowEditorPage() {
             {workflow && (
               <div className="flex items-center gap-2 mt-1">
                 <Badge variant="secondary">
-                  {getStatusDisplayName(workflow.status)}
+                  {getWorkflowStatusDisplayName(workflow.status)}
                 </Badge>
                 {workflow.isTemplate && (
                   <Badge variant="outline">Template</Badge>
@@ -282,7 +285,7 @@ export function WorkflowEditorPage() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-3">
-                Current status: <strong>{getStatusDisplayName(workflow.status)}</strong>
+                Current status: <strong>{getWorkflowStatusDisplayName(workflow.status)}</strong>
               </p>
 
               <div className="flex gap-2 flex-wrap">

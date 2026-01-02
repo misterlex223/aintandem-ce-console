@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Organization, Workspace, Project, Workflow } from '@/lib/types';
-import { api } from '@/lib/api';
+import { getClient } from '@/lib/api/api-helpers';
 import { useAIBaseNavigationStore } from '@/stores/ai-base-navigation-store';
 import {
   useOrganizationsQuery,
@@ -204,11 +204,12 @@ export function useAIBaseQueryState(_props: AIBaseHookProps = {}): [AIBaseState,
     if (!workspaceId) return;
     try {
       // Create project
-      const newProject = await createProjectMutation.mutateAsync({ workspaceId, name, folderPath });
+      const newProject = await createProjectMutation.mutateAsync({ workspaceId, name, folderPath }) as Project;
 
       // Bind workflow if provided
       if (workflowId && workflowId !== 'none') {
-        await api.updateProject(newProject.id, { workflowId });
+        const client = getClient();
+        await client.workspaces.updateProject(newProject.id, { workflowId }) as any;
       }
     } catch (error) {
       console.error('Failed to create project:', error);
@@ -242,8 +243,9 @@ export function useAIBaseQueryState(_props: AIBaseHookProps = {}): [AIBaseState,
     try {
       // Find project associated with this sandbox
       const project = projects.find(p => p.sandboxId === sandboxId);
-      await api.stopSandbox(sandboxId);
-      await api.deleteSandbox(sandboxId);
+      const client = getClient();
+      await client.sandboxes.stopSandbox(sandboxId);
+      await client.sandboxes.deleteSandbox(sandboxId);
       // Invalidate both queries to refresh cache
       await queryClient.invalidateQueries({ queryKey: SANDBOX_KEYS.list() });
       await queryClient.invalidateQueries({ queryKey: ['all-sandbox-data'] });
@@ -262,9 +264,14 @@ export function useAIBaseQueryState(_props: AIBaseHookProps = {}): [AIBaseState,
     try {
       // Get the project first to access its workspaceId
       const project = projects.find(p => p.id === projectId);
-      await api.stopSandbox(sandboxId);
-      await api.deleteSandbox(sandboxId);
-      await api.createSandbox(`sandbox-${projectId}`, '', projectId);
+      const client = getClient();
+      await client.sandboxes.stopSandbox(sandboxId);
+      await client.sandboxes.deleteSandbox(sandboxId);
+      await client.sandboxes.createSandbox({
+        name: `sandbox-${projectId}`,
+        folderMapping: '',
+        projectId
+      } as any);
       // Invalidate both queries to refresh cache
       await queryClient.invalidateQueries({ queryKey: SANDBOX_KEYS.list() });
       await queryClient.invalidateQueries({ queryKey: ['all-sandbox-data'] });
@@ -316,7 +323,8 @@ export function useAIBaseQueryState(_props: AIBaseHookProps = {}): [AIBaseState,
 
   const handleMoveProject = useCallback(async (projectId: string, targetWorkspaceId: string) => {
     try {
-      await api.moveProject(projectId, targetWorkspaceId);
+      const client = getClient();
+      await client.workspaces.moveProject(projectId, { targetWorkspaceId }) as any;
     } catch (error) {
       console.error('Failed to move project:', error);
       throw error;
@@ -325,10 +333,11 @@ export function useAIBaseQueryState(_props: AIBaseHookProps = {}): [AIBaseState,
 
   const handleChangeWorkflow = useCallback(async (projectId: string, workflowId: string | null) => {
     try {
+      const client = getClient();
       // Update project with new workflow (or null to unbind)
-      await api.updateProject(projectId, {
+      await client.workspaces.updateProject(projectId, {
         workflowId: workflowId === 'none' ? null : workflowId || undefined,
-      });
+      }) as any;
       
       // Invalidate projects cache to refresh the UI with the new workflow info
       await queryClient.invalidateQueries({ queryKey: PROJECT_KEYS.lists() });

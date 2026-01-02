@@ -14,7 +14,7 @@ import type { TaskExecution } from '@/lib/types';
 import { FileText, Loader2, Plus, Save, Eye } from 'lucide-react';
 import { ContextSearchDialog } from '../context/context-search-dialog';
 import { getMemoryType, getMemoryContent, getMemorySummary } from '@/lib/memory-adapters';
-import { authenticatedFetch } from '@/lib/utils/authenticated-fetch';
+import { getClient } from '@/lib/api/api-helpers';
 
 interface TaskContextPanelProps {
   task: TaskExecution;
@@ -55,13 +55,9 @@ export function TaskContextPanel({
     const fetchContextData = async () => {
       setLoading(true);
       try {
-        const response = await authenticatedFetch(`/api/projects/${projectId}/tasks/${task.id}/context`, {
-          headers: { 'Content-Type': 'application/json' }
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setContextData(data);
-        }
+        const client = getClient();
+        const data = await client.tasks.getTaskContext(projectId, task.id) as any;
+        setContextData(data);
       } catch (error) {
         console.error('Failed to fetch task context:', error);
       } finally {
@@ -81,20 +77,14 @@ export function TaskContextPanel({
     if (onSaveContext) {
       onSaveContext(task.terminalOutput);
     } else {
-      // Default implementation: call API directly
+      // Default implementation: use SDK
       try {
-        const response = await authenticatedFetch(`/api/projects/${projectId}/tasks/${task.id}/context/save`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            content: task.terminalOutput,
-            summary: `Output from task: ${task.title}`,
-          }),
-        });
-
-        if (response.ok) {
-          alert('Task output saved as context!');
-        }
+        const client = getClient();
+        await client.tasks.saveTaskOutput(projectId, task.id, {
+          content: task.terminalOutput,
+          summary: `Output from task: ${task.title}`,
+        } as any);
+        alert('Task output saved as context!');
       } catch (error) {
         console.error('Failed to save context:', error);
         alert('Failed to save context');

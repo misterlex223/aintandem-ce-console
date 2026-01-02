@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Folder, ArrowUp } from 'lucide-react';
-import { api } from '@/lib/api';
+import { browseDirectories } from '@/lib/api/api-helpers';
 
 interface DirectoryBrowserProps {
   open: boolean;
@@ -21,7 +21,8 @@ export function DirectoryBrowser({ open, onOpenChange, onSelectPath }: Directory
     setIsLoading(true);
     setError(null);
     try {
-      const data = await api.browseDirectories(path);
+      // Use SDK's browseDirectories helper
+      const data = await browseDirectories(path);
       setCurrentPath(data.currentPath);
       setDirectories(data.directories);
     } catch (err) {

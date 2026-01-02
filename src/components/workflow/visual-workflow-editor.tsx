@@ -139,14 +139,14 @@ export function VisualWorkflowEditor({ phases, transitions, onChange, disabled }
       // Determine source handle based on transition type
       sourceHandle = sourceHandle ||
                     (transition === 'forward' ? 'phase-output-forward' :
-                     transition === 'feedback' ? 'phase-output-feedback' :
-                     'phase-output-loop');
+                      transition === 'feedback' ? 'phase-output-feedback' :
+                        'phase-output-loop');
 
       // Determine target handle based on transition type
       targetHandle = targetHandle ||
                     (transition === 'forward' ? 'phase-input' :
-                     transition === 'feedback' ? 'phase-input-feedback' :
-                     'phase-input-loop');
+                      transition === 'feedback' ? 'phase-input-feedback' :
+                        'phase-input-loop');
 
       // Determine edge type based on transition type
       edgeType = edgeType || getEdgeType(transition);

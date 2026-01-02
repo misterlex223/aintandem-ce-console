@@ -1,0 +1,18 @@
+#!/bin/bash
+set -e
+
+echo "🔍 Running pre-commit checks..."
+
+# Run TypeScript check and build
+echo "📦 Checking if build passes..."
+pnpm build
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "❌ Pre-commit check failed: Build errors detected."
+  echo "   Please fix the errors before committing."
+  exit 1
+fi
+
+echo "✅ Pre-commit checks passed!"
+exit 0
