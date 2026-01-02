@@ -4,24 +4,22 @@ set -e
 echo "🔍 Running pre-push checks..."
 
 # Check for uncommitted changes
-if ! git diff --quiet || ! git diff --cached --quiet; then
+echo "${YELLOW}▶ Checking for uncommitted changes...${NC}"
+if [ -n "$(git status --porcelain)" ]; then
   echo ""
-  echo "❌ Pre-push check failed: You have uncommitted changes."
-  echo ""
-  echo "Please commit or stash your changes before pushing:"
-  echo "  git commit -m 'your message'   # commit changes"
-  echo "  git stash                      # stash changes temporarily"
-  echo ""
+  echo "${RED}❌ You have uncommitted changes!${NC}"
+  echo "${YELLOW}Please commit or stash your changes before pushing.${NC}"
   git status --short
   exit 1
 fi
+echo "${GREEN}✓ No uncommitted changes${NC}"
 
 # Check for untracked files (optional warning)
 UNTRACKED=$(git ls-files --others --exclude-standard | wc -l | tr -d ' ')
 if [ "$UNTRACKED" -gt 0 ]; then
   echo ""
-  echo "⚠️  Warning: You have $UNTRACKED untracked file(s)."
-  echo "   Consider committing or adding them to .gitignore"
+  echo "${YELLOW}⚠️  Warning: You have $UNTRACKED untracked file(s).${NC}"
+  echo "${YELLOW}   Consider committing or adding them to .gitignore${NC}"
   echo ""
   git ls-files --others --exclude-standard
 fi
@@ -32,8 +30,8 @@ pnpm lint
 
 if [ $? -ne 0 ]; then
   echo ""
-  echo "❌ Pre-push check failed: Linting errors detected."
-  echo "   Run 'pnpm lint:fix' to auto-fix issues."
+  echo "${RED}❌ Pre-push check failed: Linting errors detected.${NC}"
+  echo "${YELLOW}   Run 'pnpm lint:fix' to auto-fix issues.${NC}"
   exit 1
 fi
 
@@ -43,9 +41,9 @@ pnpm build
 
 if [ $? -ne 0 ]; then
   echo ""
-  echo "❌ Pre-push check failed: Build errors detected."
+  echo "${RED}❌ Pre-push check failed: Build errors detected.${NC}"
   exit 1
 fi
 
-echo "✅ Pre-push checks passed!"
+echo "${GREEN}✅ Pre-push checks passed!${NC}"
 exit 0

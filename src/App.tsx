@@ -36,31 +36,31 @@ function App() {
           {/* Public route */}
           <Route path="/login" element={<LoginPage />} />
 
-            {/* Protected routes */}
-            <Route element={<PrivateRoute children={<MainLayout />} />}>
-              <Route path="/" element={<AIBasePage />} />
-              <Route path="/sandboxes" element={<SandboxesPage />} />
-              <Route path="/workflows" element={<WorkflowsPage />} />
-              <Route path="/workflow/new" element={<WorkflowEditorPage />} />
-              <Route path="/workflow/:id/edit" element={<WorkflowEditorPage />} />
-              <Route path="/context" element={<ContextPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-            </Route>
-            {/* Full-width pages without MainLayout container - also protected */}
-            <Route path="/sandbox/:id" element={
-              <PrivateRoute children={<SandboxPage />} />
-            } />
-            <Route path="/project/:projectId/workflow" element={
-              <PrivateRoute children={<WorkflowPage />} />
-            } />
-            {/* Keep old routes for backward compatibility - also protected */}
-            <Route element={<PrivateRoute children={<MainLayout />} />}>
-              <Route path="/shell/:id" element={<ShellPage />} />
-              <Route path="/docs/:id" element={<DocsPage />} />
-            </Route>
-          </Routes>
-          <Toaster />
-        </Router>
+          {/* Protected routes */}
+          <Route element={<PrivateRoute children={<MainLayout />} />}>
+            <Route path="/" element={<AIBasePage />} />
+            <Route path="/sandboxes" element={<SandboxesPage />} />
+            <Route path="/workflows" element={<WorkflowsPage />} />
+            <Route path="/workflow/new" element={<WorkflowEditorPage />} />
+            <Route path="/workflow/:id/edit" element={<WorkflowEditorPage />} />
+            <Route path="/context" element={<ContextPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+          </Route>
+          {/* Full-width pages without MainLayout container - also protected */}
+          <Route path="/sandbox/:id" element={
+            <PrivateRoute children={<SandboxPage />} />
+          } />
+          <Route path="/project/:projectId/workflow" element={
+            <PrivateRoute children={<WorkflowPage />} />
+          } />
+          {/* Keep old routes for backward compatibility - also protected */}
+          <Route element={<PrivateRoute children={<MainLayout />} />}>
+            <Route path="/shell/:id" element={<ShellPage />} />
+            <Route path="/docs/:id" element={<DocsPage />} />
+          </Route>
+        </Routes>
+        <Toaster />
+      </Router>
     </AInTandemProvider>
   );
 }
