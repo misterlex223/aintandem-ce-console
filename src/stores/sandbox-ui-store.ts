@@ -17,7 +17,7 @@ interface SandboxUIState {
   resetSourceDialog: () => void;
 }
 
-export const useSandboxUIStore = create<SandboxUIState>()((set) => ({
+export const useSandboxUIStore = create<SandboxUIState>((set) => ({
   // Dialog states
   isSourceDialogOpen: false,
 

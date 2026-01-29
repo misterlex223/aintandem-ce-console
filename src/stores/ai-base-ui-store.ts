@@ -64,7 +64,7 @@ interface AIBaseUIState {
   resetMoveDialog: () => void;
 }
 
-export const useAIBaseUIStore = create<AIBaseUIState>()((set) => ({
+export const useAIBaseUIStore = create<AIBaseUIState>((set) => ({
   // Dialog states
   isOrgDialogOpen: false,
   isWorkspaceDialogOpen: false,
