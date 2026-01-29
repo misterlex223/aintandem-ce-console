@@ -10,6 +10,15 @@ on:
       - './**.js'
       - './**.json'
       - './Dockerfile'
+  pull_request:
+    types:
+      - closed
+    paths:
+      - './**.tsx'
+      - './**.ts'
+      - './**.js'
+      - './**.json'
+      - './Dockerfile'
   workflow_dispatch:
 
 env:
@@ -19,6 +28,7 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event.pull_request.merged == true
 
     permissions:
       contents: read
