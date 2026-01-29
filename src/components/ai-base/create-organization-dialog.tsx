@@ -85,7 +85,7 @@ export function CreateOrganizationDialog({
         onOpenChange={setShowFolderSelection}
         title="Select Organization Folder"
         description="Select an existing folder at the base directory level. Only one level is shown to maintain hierarchy structure."
-        apiEndpoint="/api/folders/organizations"
+        apiEndpoint="/folders/organizations"
         onSelect={onFolderPathChange}
       />
     </>

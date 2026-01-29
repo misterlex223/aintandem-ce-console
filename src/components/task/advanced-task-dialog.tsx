@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Plus, X, Sparkles, FileText } from 'lucide-react';
-import { executeAdhocTask } from '@/lib/api/tasks';
+import { getClient } from '@/lib/api/api-helpers';
 import { toast } from 'sonner';
 import { Memory } from '@/types/context';
 import { ContextSearchDialog } from '../context/context-search-dialog';
@@ -81,7 +81,9 @@ export function AdvancedTaskDialog({
         }
       });
 
-      await executeAdhocTask(projectId, {
+      const client = getClient();
+      await client.tasks.executeAdhocTask({
+        projectId,
         title: title.trim(),
         description: description.trim() || undefined,
         prompt: prompt.trim(),

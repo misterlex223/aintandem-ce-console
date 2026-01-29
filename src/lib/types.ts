@@ -231,3 +231,19 @@ export interface DirectoryListing {
   currentPath: string;
   directories: string[];
 }
+
+// Sandbox Image Types
+export interface SandboxImage {
+  id: string;
+  name: string;
+  tags?: string[];
+  icon?: string;
+  isDefault?: boolean;
+  platform?: string;
+}
+
+export interface SandboxImagesListResponse {
+  images: SandboxImage[];
+  total: number;
+  defaultImageId: string;
+}

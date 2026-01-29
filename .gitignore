@@ -6,6 +6,14 @@
 .cospec-sync
 .kai-notify.json
 
+# AI agents
+QWEN.md
+CLAUDE.md
+.claude
+
+# External modules
+sdk
+
 # Logs
 logs
 *.log

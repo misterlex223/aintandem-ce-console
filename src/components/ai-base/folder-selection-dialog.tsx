@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Folder, RefreshCw } from 'lucide-react';
-import { buildApiUrl } from '@/lib/config';
-import { authenticatedFetch } from '@/lib/utils/authenticated-fetch';
+import { getClient } from '@/lib/api/api-helpers';
 
 interface FolderSelectionDialogProps {
   open: boolean;
@@ -31,11 +30,9 @@ export function FolderSelectionDialog({
     setLoading(true);
     setError(null);
     try {
-      const response = await authenticatedFetch(buildApiUrl(apiEndpoint));
-      if (!response.ok) {
-        throw new Error('Failed to fetch folders');
-      }
-      const data = await response.json();
+      const client = getClient();
+      // Use SDK's HttpClient to make the API call
+      const data = await client.getHttpClient().get<{ folders: string[] }>(apiEndpoint);
       setFolders(data.folders || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');

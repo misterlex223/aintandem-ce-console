@@ -13,11 +13,24 @@ import { MainLayout } from '@/components/layout/main-layout';
 import { Toaster } from '@/components/ui/sonner';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { PrivateRoute } from '@/components/auth/PrivateRoute';
-import { AuthProvider } from '@/contexts/AuthContext';
+import { AInTandemProvider } from '@aintandem/sdk-react';
+
+// Build API URL from environment
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 function App() {
   return (
-    <AuthProvider>
+    <AInTandemProvider
+      config={{
+        baseURL: API_BASE_URL || window.location.origin,
+      }}
+      onAuthSuccess={(user) => {
+        console.log('[AInTandemProvider] Auth success:', user);
+      }}
+      onAuthError={(error) => {
+        console.error('[AInTandemProvider] Auth error:', error);
+      }}
+    >
       <Router>
         <Routes>
           {/* Public route */}
@@ -48,7 +61,7 @@ function App() {
         </Routes>
         <Toaster />
       </Router>
-    </AuthProvider>
+    </AInTandemProvider>
   );
 }
 

@@ -23,7 +23,7 @@ import { X, Plus, Upload, Folder, File, AlertCircle, CheckCircle2, Loader2 } fro
 import type { MemoryScope, MemoryVisibility, ImportResult } from '../../types/context';
 import { MEMORY_VISIBILITY_INFO } from '../../types/context';
 import { importDocument, importFolder } from '../../lib/context-api';
-import { api } from '../../lib/api';
+import { getClient } from '../../lib/api/api-helpers';
 import type { Organization, Workspace, Project } from '../../lib/types';
 
 interface FileImportDialogProps {
@@ -79,7 +79,8 @@ export function FileImportDialog({
 
   const loadHierarchyData = async () => {
     try {
-      const orgs = await api.getOrganizations();
+      const client = getClient();
+      const orgs = await client.workspaces.listOrganizations() as any;
       setOrganizations(orgs);
       if (orgs.length > 0) {
         setSelectedOrgId(orgs[0].id);
@@ -98,7 +99,8 @@ export function FileImportDialog({
 
   const loadWorkspaces = async (orgId: string) => {
     try {
-      const ws = await api.getWorkspaces(orgId);
+      const client = getClient();
+      const ws = await client.workspaces.listWorkspaces(orgId) as any;
       setWorkspaces(ws);
       if (ws.length > 0) {
         setSelectedWorkspaceId(ws[0].id);
@@ -117,7 +119,8 @@ export function FileImportDialog({
 
   const loadProjects = async (workspaceId: string) => {
     try {
-      const projs = await api.getProjects(workspaceId);
+      const client = getClient();
+      const projs = await client.workspaces.listProjects(workspaceId) as any;
       setProjects(projs);
       if (projs.length > 0 && selectedScopeType === 'project') {
         setSelectedScopeId(projs[0].id);
@@ -132,15 +135,15 @@ export function FileImportDialog({
     if (defaultScope) return;
 
     switch (selectedScopeType) {
-      case 'organization':
-        setSelectedScopeId(selectedOrgId);
-        break;
-      case 'workspace':
-        setSelectedScopeId(selectedWorkspaceId);
-        break;
-      case 'project':
-        setSelectedScopeId(projects.length > 0 ? projects[0].id : '');
-        break;
+    case 'organization':
+      setSelectedScopeId(selectedOrgId);
+      break;
+    case 'workspace':
+      setSelectedScopeId(selectedWorkspaceId);
+      break;
+    case 'project':
+      setSelectedScopeId(projects.length > 0 ? projects[0].id : '');
+      break;
     }
   }, [selectedScopeType, selectedOrgId, selectedWorkspaceId, projects, defaultScope]);
 

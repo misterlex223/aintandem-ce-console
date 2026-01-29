@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Organization, Workspace, Project, Workflow } from '@/lib/types';
-import { api } from '@/lib/api';
+import { getClient } from '@/lib/api/api-helpers';
 
 interface ExtendedProject extends Project {
   organizationId?: string;
@@ -42,25 +42,25 @@ interface AIBaseActions {
   handleSelectProject: (projectId: string | null) => void;
   handleSetViewMode: (mode: 'hierarchy' | 'grid' | 'list' | 'tree') => void;
   handleSetIsDeleteLocked: (locked: boolean) => void;
-  
+
   // Tree view toggle actions
   toggleOrganizationExpansion: (orgId: string) => void;
   toggleWorkspaceExpansion: (wsId: string) => void;
-  
+
   // Data fetching
   fetchOrganizations: () => Promise<void>;
   fetchWorkspaces: (organizationId: string) => Promise<void>;
   fetchProjects: (workspaceId: string) => Promise<void>;
   fetchAllProjects: () => Promise<void>;
   fetchWorkflows: () => Promise<void>;
-  
+
   // CRUD operations
   handleCreateOrganization: (name: string, folderPath: string) => Promise<void>;
   handleCreateWorkspace: (organizationId: string, name: string, folderPath: string) => Promise<void>;
   handleCreateProject: (workspaceId: string, name: string, folderPath: string, workflowId?: string) => Promise<void>;
-  handleCreateSandbox: (projectId: string, aiConfig?: any) => Promise<void>;
+  handleCreateSandbox: (projectId: string, aiConfig?: any, imageName?: string) => Promise<void>;
   handleDestroySandbox: (sandboxId: string) => Promise<void>;
-  handleRecreateSandbox: (projectId: string, sandboxId: string, aiConfig?: any) => Promise<void>;
+  handleRecreateSandbox: (projectId: string, sandboxId: string, aiConfig?: any, imageName?: string) => Promise<void>;
   handleDeleteOrganization: (orgId: string) => Promise<void>;
   handleDeleteWorkspace: (workspaceId: string) => Promise<void>;
   handleDeleteProject: (projectId: string, deleteFolder?: boolean) => Promise<void>;
@@ -95,7 +95,8 @@ export function useAIBaseState({ initialViewMode = 'hierarchy' }: AIBaseHookProp
   // Data fetching functions - these need to be declared before the functions that use them
   const fetchOrganizations = useCallback(async () => {
     try {
-      const data = await api.getOrganizations();
+      const client = getClient();
+      const data = await client.workspaces.listOrganizations() as any;
       setOrganizations(data);
     } catch (error) {
       console.error('Failed to fetch organizations:', error);
@@ -104,7 +105,8 @@ export function useAIBaseState({ initialViewMode = 'hierarchy' }: AIBaseHookProp
 
   const fetchWorkspaces = useCallback(async (organizationId: string) => {
     try {
-      const data = await api.getWorkspaces(organizationId);
+      const client = getClient();
+      const data = await client.workspaces.listWorkspaces(organizationId) as any;
       setWorkspaces(data);
     } catch (error) {
       console.error('Failed to fetch workspaces:', error);
@@ -113,7 +115,8 @@ export function useAIBaseState({ initialViewMode = 'hierarchy' }: AIBaseHookProp
 
   const fetchProjects = useCallback(async (workspaceId: string) => {
     try {
-      const data = await api.getProjects(workspaceId);
+      const client = getClient();
+      const data = await client.workspaces.listProjects(workspaceId) as any;
       if (viewMode === 'list') {
         // In list view, we accumulate projects from all workspaces
         setProjects(prevProjects => {
@@ -147,7 +150,8 @@ export function useAIBaseState({ initialViewMode = 'hierarchy' }: AIBaseHookProp
   const fetchWorkflows = useCallback(async () => {
     try {
       // Fetch only published workflows for binding
-      const data = await api.listWorkflows('published');
+      const client = getClient();
+      const data = await client.workflows.listWorkflows('published') as any;
       setWorkflows(data);
     } catch (error) {
       console.error('Failed to fetch workflows:', error);
@@ -157,20 +161,21 @@ export function useAIBaseState({ initialViewMode = 'hierarchy' }: AIBaseHookProp
   const fetchAllProjects = useCallback(async () => {
     try {
       const allProjects: ExtendedProject[] = [];
+      const client = getClient();
 
       // Fetch all organizations
-      const orgs = await api.getOrganizations();
+      const orgs = await client.workspaces.listOrganizations() as any;
 
       // For each organization, fetch its workspaces
       for (const org of orgs) {
-        const wspaces = await api.getWorkspaces(org.id);
+        const wspaces = await client.workspaces.listWorkspaces(org.id) as any;
 
         // For each workspace, fetch its projects
         for (const ws of wspaces) {
-          const projs = await api.getProjects(ws.id);
+          const projs = await client.workspaces.listProjects(ws.id) as any;
 
           // Add organization and workspace info to each project
-          const projectsWithInfo = projs.map(proj => ({
+          const projectsWithInfo = projs.map((proj: Project) => ({
             ...proj,
             organizationId: org.id,
             organizationName: org.name,
@@ -398,7 +403,8 @@ export function useAIBaseState({ initialViewMode = 'hierarchy' }: AIBaseHookProp
   // CRUD operations
   const handleCreateOrganization = useCallback(async (name: string, folderPath: string) => {
     try {
-      await api.createOrganization(name, folderPath);
+      const client = getClient();
+      await client.workspaces.createOrganization({ name, folderPath }) as any;
       await fetchOrganizations();
     } catch (error) {
       console.error('Failed to create organization:', error);
@@ -409,7 +415,8 @@ export function useAIBaseState({ initialViewMode = 'hierarchy' }: AIBaseHookProp
   const handleCreateWorkspace = useCallback(async (organizationId: string, name: string, folderPath: string) => {
     if (!organizationId) return;
     try {
-      await api.createWorkspace(organizationId, name, folderPath);
+      const client = getClient();
+      await client.workspaces.createWorkspace(organizationId, { name, folderPath }) as any;
       await fetchWorkspaces(organizationId);
     } catch (error) {
       console.error('Failed to create workspace:', error);
@@ -420,12 +427,13 @@ export function useAIBaseState({ initialViewMode = 'hierarchy' }: AIBaseHookProp
   const handleCreateProject = useCallback(async (workspaceId: string, name: string, folderPath: string, workflowId?: string) => {
     if (!workspaceId) return;
     try {
+      const client = getClient();
       // Create project
-      const newProject = await api.createProject(workspaceId, name, folderPath);
+      const newProject = await client.workspaces.createProject(workspaceId, { name, folderPath }) as any;
 
       // Bind workflow if provided
       if (workflowId && workflowId !== 'none') {
-        await api.updateProject(newProject.id, { workflowId });
+        await client.workspaces.updateProject(newProject.id, { workflowId }) as any;
       }
 
       await fetchProjects(workspaceId);
@@ -435,9 +443,16 @@ export function useAIBaseState({ initialViewMode = 'hierarchy' }: AIBaseHookProp
     }
   }, [fetchProjects]);
 
-  const handleCreateSandbox = useCallback(async (projectId: string, aiConfig?: any) => {
+  const handleCreateSandbox = useCallback(async (projectId: string, aiConfig?: any, imageName?: string) => {
     try {
-      await api.createSandbox('', undefined, projectId, aiConfig);
+      const client = getClient();
+      await client.sandboxes.createSandbox({
+        name: '',
+        folderMapping: undefined,
+        projectId,
+        aiConfig,
+        imageName
+      } as any);
       if (selectedWorkspace) {
         await fetchProjects(selectedWorkspace);
       }
@@ -449,8 +464,9 @@ export function useAIBaseState({ initialViewMode = 'hierarchy' }: AIBaseHookProp
 
   const handleDestroySandbox = useCallback(async (sandboxId: string) => {
     try {
-      await api.stopSandbox(sandboxId);
-      await api.deleteSandbox(sandboxId);
+      const client = getClient();
+      await client.sandboxes.stopSandbox(sandboxId);
+      await client.sandboxes.deleteSandbox(sandboxId);
       if (selectedWorkspace) {
         await fetchProjects(selectedWorkspace);
       }
@@ -460,11 +476,18 @@ export function useAIBaseState({ initialViewMode = 'hierarchy' }: AIBaseHookProp
     }
   }, [fetchProjects, selectedWorkspace]);
 
-  const handleRecreateSandbox = useCallback(async (projectId: string, sandboxId: string, aiConfig?: any) => {
+  const handleRecreateSandbox = useCallback(async (projectId: string, sandboxId: string, aiConfig?: any, imageName?: string) => {
     try {
-      await api.stopSandbox(sandboxId);
-      await api.deleteSandbox(sandboxId);
-      await api.createSandbox('', undefined, projectId, aiConfig);
+      const client = getClient();
+      await client.sandboxes.stopSandbox(sandboxId);
+      await client.sandboxes.deleteSandbox(sandboxId);
+      await client.sandboxes.createSandbox({
+        name: '',
+        folderMapping: undefined,
+        projectId,
+        aiConfig,
+        imageName
+      } as any);
       if (selectedWorkspace) {
         await fetchProjects(selectedWorkspace);
       }
@@ -476,7 +499,8 @@ export function useAIBaseState({ initialViewMode = 'hierarchy' }: AIBaseHookProp
 
   const handleDeleteOrganization = useCallback(async (orgId: string) => {
     try {
-      await api.deleteOrganization(orgId);
+      const client = getClient();
+      await client.workspaces.deleteOrganization(orgId);
       await fetchOrganizations();
       if (selectedOrganization === orgId) {
         setSelectedOrganization(null);
@@ -489,7 +513,8 @@ export function useAIBaseState({ initialViewMode = 'hierarchy' }: AIBaseHookProp
 
   const handleDeleteWorkspace = useCallback(async (workspaceId: string) => {
     try {
-      await api.deleteWorkspace(workspaceId);
+      const client = getClient();
+      await client.workspaces.deleteWorkspace(workspaceId);
       if (selectedOrganization) {
         await fetchWorkspaces(selectedOrganization);
       }
@@ -504,7 +529,8 @@ export function useAIBaseState({ initialViewMode = 'hierarchy' }: AIBaseHookProp
 
   const handleDeleteProject = useCallback(async (projectId: string, deleteFolder: boolean = false) => {
     try {
-      await api.deleteProject(projectId, deleteFolder);
+      const client = getClient();
+      await client.workspaces.deleteProject(projectId, deleteFolder);
       if (selectedWorkspace) {
         await fetchProjects(selectedWorkspace);
       }
@@ -516,7 +542,8 @@ export function useAIBaseState({ initialViewMode = 'hierarchy' }: AIBaseHookProp
 
   const handleMoveProject = useCallback(async (projectId: string, targetWorkspaceId: string) => {
     try {
-      await api.moveProject(projectId, targetWorkspaceId);
+      const client = getClient();
+      await client.workspaces.moveProject(projectId, { targetWorkspaceId }) as any;
       if (selectedWorkspace) {
         await fetchProjects(selectedWorkspace);
       }
@@ -528,10 +555,11 @@ export function useAIBaseState({ initialViewMode = 'hierarchy' }: AIBaseHookProp
 
   const handleChangeWorkflow = useCallback(async (projectId: string, workflowId: string | null) => {
     try {
+      const client = getClient();
       // Update project with new workflow (or null to unbind)
-      await api.updateProject(projectId, {
+      await client.workspaces.updateProject(projectId, {
         workflowId: workflowId === 'none' ? null : workflowId || undefined,
-      });
+      }) as any;
 
       if (selectedWorkspace) {
         await fetchProjects(selectedWorkspace);

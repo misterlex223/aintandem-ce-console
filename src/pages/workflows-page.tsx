@@ -5,11 +5,8 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '@/lib/api';
-import {
-  getStatusBadgeVariant,
-  getStatusDisplayName,
-} from '@/lib/api/workflows';
+import { getClient, exportWorkflowJson, importWorkflowJson } from '@/lib/api/api-helpers';
+import { getWorkflowStatusBadgeVariant, getWorkflowStatusDisplayName } from '@/lib/api/api-helpers';
 import type { Workflow } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -32,7 +29,8 @@ export function WorkflowsPage() {
     async function fetchWorkflows() {
       try {
         setIsLoading(true);
-        const data = await api.listWorkflows();
+        const client = getClient();
+        const data = await client.workflows.listWorkflows() as any;
         setWorkflows(data);
         setFilteredWorkflows(data);
         setError(null);
@@ -62,7 +60,8 @@ export function WorkflowsPage() {
     if (!newName) return;
 
     try {
-      const cloned = await api.cloneWorkflow(workflow.id, newName);
+      const client = getClient();
+      const cloned = await client.workflows.cloneWorkflow(workflow.id, { name: newName }) as any;
       setWorkflows([...workflows, cloned]);
       alert(`Workflow cloned successfully as "${cloned.name}"`);
     } catch (err) {
@@ -82,7 +81,8 @@ export function WorkflowsPage() {
     if (!confirm(confirmMsg)) return;
 
     try {
-      await api.deleteWorkflow(workflow.id);
+      const client = getClient();
+      await client.workflows.deleteWorkflow(workflow.id);
       setWorkflows(workflows.filter(w => w.id !== workflow.id));
       alert('Workflow deleted successfully');
     } catch (err) {
@@ -103,7 +103,7 @@ export function WorkflowsPage() {
 
   // Handle export workflow
   const handleExport = (workflow: Workflow) => {
-    const jsonStr = api.exportWorkflowJson(workflow);
+    const jsonStr = exportWorkflowJson(workflow);
     const filename = `${workflow.name.replace(/\s+/g, '_')}_export.json`;
     downloadFile(jsonStr, filename);
   };
@@ -129,7 +129,7 @@ export function WorkflowsPage() {
         const description = prompt('Enter workflow description:', parsed.description || '');
         
         // Import the workflow
-        const importedWorkflow = await api.importWorkflowJson(text, name, description || '');
+        const importedWorkflow = await importWorkflowJson(text, name, description || '');
         setWorkflows([...workflows, importedWorkflow]);
         alert('Workflow imported successfully!');
       } catch (err) {
@@ -238,8 +238,8 @@ export function WorkflowsPage() {
                       </Badge>
                     )}
                   </CardTitle>
-                  <Badge variant={getStatusBadgeVariant(workflow.status)}>
-                    {getStatusDisplayName(workflow.status)}
+                  <Badge variant={getWorkflowStatusBadgeVariant(workflow.status)}>
+                    {getWorkflowStatusDisplayName(workflow.status)}
                   </Badge>
                 </div>
                 <CardDescription className="line-clamp-2">

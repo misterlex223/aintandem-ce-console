@@ -137,12 +137,14 @@ export function HierarchyView({
                     enableFolderSelection: true,
                   },
                 ]}
-                onSubmit={async () => { 
+                onSubmit={async () => {
                   try {
                     await onCreateWorkspace();
                     // Reset form fields in parent
                     onNewWorkspaceNameChange('');
                     onNewWorkspacePathChange('');
+                    // Close dialog on success
+                    onWorkspaceDialogChange(false);
                   } catch (error) {
                     console.error('Error creating workspace:', error);
                     // Keep dialog open on error to allow retry
@@ -150,7 +152,7 @@ export function HierarchyView({
                 }}
                 trigger={<Button size="sm">Add</Button>}
                 folderSelectionConfig={{
-                  apiEndpoint: `/api/folders/workspaces/${selectedOrganization}`,
+                  apiEndpoint: `/folders/workspaces/${selectedOrganization}`,
                   title: 'Select Workspace Folder',
                   description: 'Select an existing folder within the organization. Only one level is shown to maintain hierarchy structure.',
                 }}
@@ -215,13 +217,15 @@ export function HierarchyView({
                     ],
                   },
                 ]}
-                onSubmit={async () => { 
+                onSubmit={async () => {
                   try {
                     await onCreateProject();
                     // Reset form fields in parent
                     onNewProjectNameChange('');
                     onNewProjectPathChange('');
                     onWorkflowIdChange('');
+                    // Close dialog on success
+                    onProjectDialogChange(false);
                   } catch (error) {
                     console.error('Error creating project:', error);
                     // Keep dialog open on error to allow retry
@@ -229,7 +233,7 @@ export function HierarchyView({
                 }}
                 trigger={<Button size="sm">Add Project</Button>}
                 folderSelectionConfig={{
-                  apiEndpoint: `/api/folders/projects/${selectedWorkspace}`,
+                  apiEndpoint: `/folders/projects/${selectedWorkspace}`,
                   title: 'Select Project Folder',
                   description: 'Select an existing folder within the workspace. Only one level is shown to maintain hierarchy structure.',
                 }}

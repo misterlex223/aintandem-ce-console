@@ -1,0 +1,49 @@
+#!/bin/bash
+set -e
+
+echo "🔍 Running pre-push checks..."
+
+# Check for uncommitted changes
+echo "${YELLOW}▶ Checking for uncommitted changes...${NC}"
+if [ -n "$(git status --porcelain)" ]; then
+  echo ""
+  echo "${RED}❌ You have uncommitted changes!${NC}"
+  echo "${YELLOW}Please commit or stash your changes before pushing.${NC}"
+  git status --short
+  exit 1
+fi
+echo "${GREEN}✓ No uncommitted changes${NC}"
+
+# Check for untracked files (optional warning)
+UNTRACKED=$(git ls-files --others --exclude-standard | wc -l | tr -d ' ')
+if [ "$UNTRACKED" -gt 0 ]; then
+  echo ""
+  echo "${YELLOW}⚠️  Warning: You have $UNTRACKED untracked file(s).${NC}"
+  echo "${YELLOW}   Consider committing or adding them to .gitignore${NC}"
+  echo ""
+  git ls-files --others --exclude-standard
+fi
+
+# Run ESLint
+echo "🔨 Running ESLint..."
+pnpm lint
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "${RED}❌ Pre-push check failed: Linting errors detected.${NC}"
+  echo "${YELLOW}   Run 'pnpm lint:fix' to auto-fix issues.${NC}"
+  exit 1
+fi
+
+# Run build check
+echo "📦 Running build check..."
+pnpm build
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "${RED}❌ Pre-push check failed: Build errors detected.${NC}"
+  exit 1
+fi
+
+echo "${GREEN}✅ Pre-push checks passed!${NC}"
+exit 0

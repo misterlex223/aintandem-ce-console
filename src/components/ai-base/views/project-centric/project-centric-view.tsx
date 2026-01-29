@@ -91,19 +91,19 @@ export function ProjectCentricView({
       let comparison = 0;
       
       switch (sortBy) {
-        case 'name':
-          comparison = a.name.localeCompare(b.name);
-          break;
-        case 'createdAt':
-          comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-          break;
-        case 'workflowPhase': {
-          // This would need more complex logic based on your workflow implementation
-          const workflowA = workflows.find(w => w.id === a.workflowId)?.name || '';
-          const workflowB = workflows.find(w => w.id === b.workflowId)?.name || '';
-          comparison = workflowA.localeCompare(workflowB);
-          break; 
-        }
+      case 'name':
+        comparison = a.name.localeCompare(b.name);
+        break;
+      case 'createdAt':
+        comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        break;
+      case 'workflowPhase': {
+        // This would need more complex logic based on your workflow implementation
+        const workflowA = workflows.find(w => w.id === a.workflowId)?.name || '';
+        const workflowB = workflows.find(w => w.id === b.workflowId)?.name || '';
+        comparison = workflowA.localeCompare(workflowB);
+        break; 
+      }
       }
       
       return sortOrder === 'asc' ? comparison : -comparison;

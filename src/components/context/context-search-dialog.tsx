@@ -109,24 +109,24 @@ export function ContextSearchDialog({
     if (searchResults.length === 0) return;
 
     switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault();
-        setSelectedIndex(prev => Math.min(prev + 1, searchResults.length - 1));
-        break;
-      case 'ArrowUp':
-        e.preventDefault();
-        setSelectedIndex(prev => Math.max(prev - 1, 0));
-        break;
-      case 'Enter':
-        e.preventDefault();
-        if (searchResults[selectedIndex]) {
-          toggleMemory(searchResults[selectedIndex]);
-        }
-        break;
-      case 'Escape':
-        e.preventDefault();
-        onClose();
-        break;
+    case 'ArrowDown':
+      e.preventDefault();
+      setSelectedIndex(prev => Math.min(prev + 1, searchResults.length - 1));
+      break;
+    case 'ArrowUp':
+      e.preventDefault();
+      setSelectedIndex(prev => Math.max(prev - 1, 0));
+      break;
+    case 'Enter':
+      e.preventDefault();
+      if (searchResults[selectedIndex]) {
+        toggleMemory(searchResults[selectedIndex]);
+      }
+      break;
+    case 'Escape':
+      e.preventDefault();
+      onClose();
+      break;
     }
   }, [searchResults, selectedIndex, toggleMemory, onClose]);
 

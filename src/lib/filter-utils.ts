@@ -109,20 +109,20 @@ export function filterProjects(
       let comparison = 0;
 
       switch (options.sortBy) {
-        case 'name':
-          comparison = a.name.localeCompare(b.name);
-          break;
-        case 'createdAt':
-          comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-          break;
-        case 'workflowPhase': {
-          const workflowA = a.workflowId ? workflows.find(w => w.id === a.workflowId) : null;
-          const workflowB = b.workflowId ? workflows.find(w => w.id === b.workflowId) : null;
-          const phaseA = workflowA?.name || '';
-          const phaseB = workflowB?.name || '';
-          comparison = phaseA.localeCompare(phaseB);
-          break;
-        }
+      case 'name':
+        comparison = a.name.localeCompare(b.name);
+        break;
+      case 'createdAt':
+        comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        break;
+      case 'workflowPhase': {
+        const workflowA = a.workflowId ? workflows.find(w => w.id === a.workflowId) : null;
+        const workflowB = b.workflowId ? workflows.find(w => w.id === b.workflowId) : null;
+        const phaseA = workflowA?.name || '';
+        const phaseB = workflowB?.name || '';
+        comparison = phaseA.localeCompare(phaseB);
+        break;
+      }
       }
 
       return options.sortOrder === 'desc' ? -comparison : comparison;
@@ -167,17 +167,18 @@ export function filterOrganizations(
       case 'createdAt':
         comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
         break;
-      case 'projectCount':
+      case 'projectCount': {
         const orgAWorkspaces = workspaces.filter(ws => ws.organizationId === a.id);
         const orgBWorkspaces = workspaces.filter(ws => ws.organizationId === b.id);
-        const orgAProjects = projects.filter(p => 
+        const orgAProjects = projects.filter(p =>
           orgAWorkspaces.some(ws => ws.id === p.workspaceId)
         ).length;
-        const orgBProjects = projects.filter(p => 
+        const orgBProjects = projects.filter(p =>
           orgBWorkspaces.some(ws => ws.id === p.workspaceId)
         ).length;
         comparison = orgAProjects - orgBProjects;
         break;
+      }
       }
 
       return options.sortOrder === 'desc' ? -comparison : comparison;
@@ -228,11 +229,12 @@ export function filterWorkflows(
       case 'version':
         comparison = (a.currentVersion || 0) - (b.currentVersion || 0);
         break;
-      case 'usageCount':
+      case 'usageCount': {
         const countA = projects.filter(p => p.workflowId === a.id).length;
         const countB = projects.filter(p => p.workflowId === b.id).length;
         comparison = countA - countB;
         break;
+      }
       }
 
       return options.sortOrder === 'desc' ? -comparison : comparison;

@@ -29,7 +29,7 @@ interface HierarchyNode {
   expanded: boolean;
 }
 
-export function ContextHierarchyView({}: ContextHierarchyViewProps) {
+export function ContextHierarchyView({ defaultScope: _defaultScope }: ContextHierarchyViewProps) {
   const {
     fetchMemories,
     searchMemories,

@@ -13,14 +13,14 @@ import { SandboxConfigDialog } from '@/components/ai-base/sandbox-config-dialog'
 import { MoreVertical, ExternalLink, RotateCcw, Move3D, Workflow, Loader2, Settings } from 'lucide-react';
 import type { Project } from '@/lib/types';
 import { getPhaseDisplayName } from '@/lib/api/workflow';
-import { api } from '@/lib/api';
+import { getClient } from '@/lib/api/api-helpers';
 
 interface ProjectCardProps {
   project: Project;
   workflowName?: string; // Display name of bound workflow
-  onCreateSandbox?: (projectId: string, aiConfig?: any) => void | Promise<void>;
+  onCreateSandbox?: (projectId: string, aiConfig?: any, imageName?: string) => void | Promise<void>;
   onDestroySandbox?: (sandboxId: string) => void | Promise<void>;
-  onRecreateSandbox?: (projectId: string, sandboxId: string, aiConfig?: any) => void | Promise<void>;
+  onRecreateSandbox?: (projectId: string, sandboxId: string, aiConfig?: any, imageName?: string) => void | Promise<void>;
   onMove?: (projectId: string) => void;
   onDelete?: (projectId: string) => void;
   onChangeWorkflow?: (projectId: string) => void;
@@ -91,11 +91,12 @@ export function ProjectCard({
     }
   };
 
-  const handleCreateSandboxWithConfig = async (aiConfig?: any) => {
+  const handleCreateSandboxWithConfig = async (config?: any) => {
     if (onCreateSandbox) {
       setIsCreatingSandbox(true);
       try {
-        const result = onCreateSandbox(project.id, aiConfig);
+        const { imageName, ...aiConfig } = config || {};
+        const result = onCreateSandbox(project.id, aiConfig, imageName);
         if (result && typeof result.then === 'function') {
           await result;
         }
@@ -119,11 +120,12 @@ export function ProjectCard({
     }
   };
 
-  const handleRecreateSandboxWithConfig = async (aiConfig?: any) => {
+  const handleRecreateSandboxWithConfig = async (config?: any) => {
     if (onRecreateSandbox) {
       setIsRecreatingSandbox(true);
       try {
-        const result = onRecreateSandbox(project.id, project.sandboxId!, aiConfig);
+        const { imageName, ...aiConfig } = config || {};
+        const result = onRecreateSandbox(project.id, project.sandboxId!, aiConfig, imageName);
         if (result && typeof result.then === 'function') {
           await result;
         }
@@ -135,8 +137,9 @@ export function ProjectCard({
 
   const handleSaveAiConfig = async (aiConfig: any) => {
     try {
+      const client = getClient();
       // Update the project with the new sandbox configuration
-      await api.updateProject(project.id, { aiConfig });
+      await client.workspaces.updateProject(project.id, { aiConfig }) as any;
     } catch (error) {
       console.error('Failed to save sandbox configuration:', error);
     }

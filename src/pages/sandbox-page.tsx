@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { SandboxLayout } from '@/components/layout/sandbox-layout';
 import { TasksTabView } from '@/components/task/tasks-tab-view';
-import { api } from '@/lib/api';
+import { getClient } from '@/lib/api/api-helpers';
 
 export function SandboxPage() {
   const { id } = useParams<{ id: string }>();
@@ -18,8 +18,9 @@ export function SandboxPage() {
 
       // Get project ID for this sandbox
       try {
-        const sandboxes = await api.getSandboxes();
-        const currentSandbox = sandboxes.find(s => s.id === id);
+        const client = getClient();
+        const sandboxes = await client.sandboxes.listSandboxes() as any;
+        const currentSandbox = sandboxes.find((s: any) => s.id === id);
         if (currentSandbox?.projectId) {
           setProjectId(currentSandbox.projectId);
         }

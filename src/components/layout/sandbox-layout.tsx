@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ExternalLink, Info } from 'lucide-react';
-import { api } from '@/lib/api';
+import { getClient } from '@/lib/api/api-helpers';
 import type { Sandbox, Organization, Workspace, Project } from '@/lib/types';
 import { getExternalResourceUrl } from '@/lib/config';
 
@@ -31,19 +31,33 @@ export function SandboxLayout({ id, activeTab, terminalIframeRef, switchTmuxWind
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [sandboxData, projectData, workspaceData, orgData] = await Promise.all([
-          api.getSandboxes(),
-          api.getProjects(),
-          api.getWorkspaces(),
-          api.getOrganizations(),
+        const client = getClient();
+        const [sandboxData, orgData] = await Promise.all([
+          client.sandboxes.listSandboxes() as any,
+          client.workspaces.listOrganizations() as any,
         ]);
+
+        // Fetch all workspaces and projects by hierarchy
+        const workspaceData: Workspace[] = [];
+        const projectData: Project[] = [];
+
+        for (const org of orgData) {
+          const orgWorkspaces = await client.workspaces.listWorkspaces(org.id) as any;
+          workspaceData.push(...orgWorkspaces);
+
+          for (const ws of orgWorkspaces) {
+            const wsProjects = await client.workspaces.listProjects(ws.id) as any;
+            projectData.push(...wsProjects);
+          }
+        }
+
         setSandboxes(sandboxData);
         setProjects(projectData);
         setWorkspaces(workspaceData);
         setOrganizations(orgData);
 
         // Find current project
-        const currentSandbox = sandboxData.find(s => s.id === id);
+        const currentSandbox = sandboxData.find((s: Sandbox) => s.id === id);
         if (currentSandbox?.projectId) {
           const proj = projectData.find(p => p.id === currentSandbox.projectId);
           setCurrentProject(proj);
@@ -56,7 +70,7 @@ export function SandboxLayout({ id, activeTab, terminalIframeRef, switchTmuxWind
             // Get workspace and organization for path construction
             const workspace = workspaceData.find(w => w.id === proj.workspaceId);
             if (workspace) {
-              const organization = orgData.find(o => o.id === workspace.organizationId);
+              const organization = orgData.find((o: Organization) => o.id === workspace.organizationId);
               if (organization) {
                 // Code-server only has access to /base-root (KAI_BASE_ROOT mount)
                 // Path structure: /base-root/org/workspace/project

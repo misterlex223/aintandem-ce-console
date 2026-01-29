@@ -6,9 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Trash2, Plus } from 'lucide-react';
+import { Trash2, Plus, Loader2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import type { FolderMapping, EnvironmentVariable, PortMapping } from '@/lib/types';
+import { useSandboxImagesQuery } from '@/services/sandbox-query-hooks';
+import type { FolderMapping, EnvironmentVariable, PortMapping, SandboxImage } from '@/lib/types';
 
 interface SandboxConfigDialogProps {
   open: boolean;
@@ -30,6 +31,7 @@ interface SandboxConfig {
   folderMappings?: FolderMapping[];
   portMappings?: PortMapping[];
   environmentVariables?: EnvironmentVariable[];
+  imageName?: string;
 }
 
 export function SandboxConfigDialog({ open, onOpenChange, onSave, initialConfig }: SandboxConfigDialogProps) {
@@ -91,8 +93,12 @@ export function SandboxConfigDialog({ open, onOpenChange, onSave, initialConfig 
       folderMappings: folderMappings(),
       portMappings: portMappings(),
       environmentVariables: environmentVariables(),
+      imageName: initialConfig?.imageName,
     };
   });
+
+  // Fetch sandbox images
+  const { data: imagesData, isLoading: imagesLoading } = useSandboxImagesQuery();
 
   const aiTypes = [
     { value: 'none', label: 'None (bash shell)' },
@@ -189,11 +195,12 @@ export function SandboxConfigDialog({ open, onOpenChange, onSave, initialConfig 
         </DialogHeader>
 
         <Tabs defaultValue="ai-windows" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="ai-windows">AI Windows</TabsTrigger>
             <TabsTrigger value="folder-mappings">Folder Mappings</TabsTrigger>
             <TabsTrigger value="port-mappings">Port Mappings</TabsTrigger>
             <TabsTrigger value="env-vars">Env. Variables</TabsTrigger>
+            <TabsTrigger value="image">Image</TabsTrigger>
             <TabsTrigger value="advanced">Advanced</TabsTrigger>
           </TabsList>
 
@@ -438,6 +445,63 @@ export function SandboxConfigDialog({ open, onOpenChange, onSave, initialConfig 
                     <p className="text-sm text-muted-foreground">No environment variables added yet.</p>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="image" className="space-y-4 mt-4 max-h-96 overflow-y-auto">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Sandbox Image</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Select the Docker image to use for this sandbox. If not specified, the default image will be used.
+                </p>
+              </CardHeader>
+              <CardContent>
+                {imagesLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                    <span className="text-sm text-muted-foreground">Loading images...</span>
+                  </div>
+                ) : imagesData && imagesData.images.length > 0 ? (
+                  <div className="space-y-3">
+                    <Select
+                      value={config.imageName || imagesData.defaultImageId || ''}
+                      onValueChange={(value) => setConfig({ ...config, imageName: value })}
+                    >
+                      <SelectTrigger id="image-select">
+                        <SelectValue placeholder="Select an image" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {imagesData.images.map((image: SandboxImage) => (
+                          <SelectItem key={image.id} value={image.id}>
+                            <div className="flex items-center gap-2">
+                              <span>{image.name}</span>
+                              {image.isDefault && (
+                                <span className="text-xs text-muted-foreground">(default)</span>
+                              )}
+                              {image.tags && image.tags.length > 0 && (
+                                <span className="text-xs text-muted-foreground">
+                                  {image.tags.join(', ')}
+                                </span>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {config.imageName && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span>Selected: </span>
+                        <span className="font-medium">
+                          {imagesData.images.find((img: SandboxImage) => img.id === config.imageName)?.name || config.imageName}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No images available. Using default image.</p>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

@@ -199,7 +199,7 @@ export function getRelatedEntities(
     }
     break;
   }
-  case 'workspace':
+  case 'workspace': {
     const ws = workspaces.find(w => w.id === entityId);
     if (ws) {
       parent = organizations.find(o => o.id === ws.organizationId);
@@ -207,8 +207,9 @@ export function getRelatedEntities(
       siblings = workspaces.filter(w => w.id !== ws.id && w.organizationId === ws.organizationId);
     }
     break;
+  }
       
-  case 'project':
+  case 'project': {
     const project = projects.find(p => p.id === entityId);
     if (project) {
       parent = workspaces.find(w => w.id === project.workspaceId);
@@ -216,8 +217,9 @@ export function getRelatedEntities(
       siblings = projects.filter(p => p.id !== project.id && p.workspaceId === project.workspaceId);
     }
     break;
+  }
       
-  case 'workflow':
+  case 'workflow': {
     const workflow = workflows.find(w => w.id === entityId);
     if (workflow) {
       // Workflows don't have parents in our model
@@ -225,6 +227,7 @@ export function getRelatedEntities(
       siblings = workflows.filter(w => w.id !== workflow.id);
     }
     break;
+  }
   }
 
   return { parent, children, siblings };
