@@ -17,3 +17,8 @@
 // this manages project execution state (currentPhaseId, stepStatuses, etc.)
 // ============================================================================
 export * from './workflow';
+
+// ============================================================================
+// Auth API (Custom authentication - not yet in SDK)
+// ============================================================================
+export * from './auth';
